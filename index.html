@@ -144,25 +144,7 @@ a{color:var(--gold);text-decoration:none;transition:color .2s}a:hover{color:var(
 </style>
 </head>
 <body>
-<div class="mo-bg" id="keyModal"><div class="mo">
-<h2>🔑 API Key 配置 <button class="mo-x" onclick="toggleModal()">&times;</button></h2>
-<p style="font-size:10px;color:var(--t2);margin-bottom:12px">Key仅存浏览器本地，不会上传</p>
-<div class="kg" style="border:1px solid rgba(139,92,246,.3);border-radius:8px;padding:10px;background:rgba(139,92,246,.05)">
-<label>🤖 Google Gemini <span class="ks no" id="ks-gm">未配置</span></label>
-<div class="d">AI首选引擎 · Gemini 2.0 Flash · 限流自动切备用</div>
-<input id="k-gm" placeholder="AIzaSy..."/>
-<a href="https://aistudio.google.com/apikey" target="_blank">免费获取Key→</a>
-</div>
-<div class="kg" style="border:1px solid rgba(6,182,212,.3);border-radius:8px;padding:10px;background:rgba(6,182,212,.05)">
-<label>🧠 阿里云百炼 (备用) <span class="ks no" id="ks-sf">未配置</span></label>
-<div class="d">AI备用引擎 · 通义千问Qwen-Plus · 免费100万token</div>
-<input id="k-sf" placeholder="sk-..."/>
-<a href="https://bailian.console.aliyun.com/?apiKey=1#/api-key" target="_blank">免费获取Key→</a>
-</div>
-<div class="kg"><label>Finnhub <span class="ks no" id="ks-fh">未配置</span></label><div class="d">股票报价/新闻 · 60次/min · <b>核心数据源</b></div><input id="k-fh"/><a href="https://finnhub.io/register" target="_blank">免费注册→</a></div>
-<div class="kg"><label>FRED <span class="ks no" id="ks-fr">未配置</span></label><div class="d">利率/CPI/失业率 · 120次/min</div><input id="k-fr"/><a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank">免费注册→</a></div>
-<button class="sv-btn" onclick="saveKeys()">💾 保存并刷新</button>
-</div></div>
+<!-- Key configuration removed — keys are now injected server-side via Cloudflare Worker -->
 <header class="hd">
 <div class="hd-l"><div class="logo">G</div><div class="hd-t"><h1>全球投资情报中心<small>v6.2</small></h1><p>多引擎AI · Gemini+通义千问 · 智能中文情报</p></div></div>
 <div class="hd-r">
@@ -170,7 +152,6 @@ a{color:var(--gold);text-decoration:none;transition:color .2s}a:hover{color:var(
 <div class="tm"><span class="live"></span><span id="ut">加载中...</span></div>
 <button class="btn" onclick="refreshAll()">⟳刷新</button>
 <button class="btn" onclick="toggleLog()">📋日志</button>
-<button class="btn" onclick="toggleModal()">🔑Key</button>
 </div>
 </header>
 <main class="mn">
@@ -206,17 +187,9 @@ a{color:var(--gold);text-decoration:none;transition:color .2s}a:hover{color:var(
 var LOG=[];function log(m,l){l=l||'info';var t=new Date().toLocaleTimeString('zh-CN');LOG.push({t:t,m:m,l:l});var p=document.getElementById('logPanel');if(p)p.innerHTML=LOG.slice(-60).map(function(x){return'<div class="log-line '+(x.l==='ok'?'log-ok':x.l==='err'?'log-err':x.l==='warn'?'log-warn':'')+'">['+x.t+'] '+x.m+'</div>';}).join('');console.log('['+l+'] '+m);}
 function toggleLog(){var p=document.getElementById('logPanel');p.style.display=p.style.display==='block'?'none':'block';}
 
-// KEYS
-var K={_s:{gm:'',sf:'',fh:'',fr:''},
-load:function(){try{var r=localStorage.getItem('gii_k62');if(r)Object.assign(this._s,JSON.parse(r));
-  var old=localStorage.getItem('gii_k60');if(old){var o=JSON.parse(old);if(o.fh&&!this._s.fh)this._s.fh=o.fh;if(o.fr&&!this._s.fr)this._s.fr=o.fr;}
-}catch(e){}var self=this;['gm','sf','fh','fr'].forEach(function(k){var i=document.getElementById('k-'+k);if(i&&self._s[k])i.value=self._s[k];});this.upd();},
-save:function(){var self=this;['gm','sf','fh','fr'].forEach(function(k){var i=document.getElementById('k-'+k);if(i&&i.value.trim())self._s[k]=i.value.trim();});try{localStorage.setItem('gii_k62',JSON.stringify(this._s));}catch(e){}this.upd();},
-get:function(k){return this._s[k]||'';},has:function(k){return!!this._s[k];},
-hasAI:function(){return this.has('gm')||this.has('sf');},
-upd:function(){var self=this;['gm','sf','fh','fr'].forEach(function(k){var e=document.getElementById('ks-'+k);if(e){if(self.has(k)){e.textContent='✓已配置';e.className='ks ok';}else{e.textContent='未配置';e.className='ks no';}}});}};
-function toggleModal(){document.getElementById('keyModal').classList.toggle('open');}
-function saveKeys(){K.save();toggleModal();refreshAll();}
+// WORKER PROXY — all API keys are server-side
+var WORKER_BASE='https://investment-api-proxy.zebin-wang.workers.dev';
+var K={has:function(){return true;},hasAI:function(){return true;},get:function(){return'proxy';},load:function(){},upd:function(){}};
 
 // DIRECT FETCH
 async function directGet(url,timeout){timeout=timeout||10000;try{var r=await fetch(url,{signal:AbortSignal.timeout(timeout)});if(!r.ok)throw new Error(r.status);return await r.json();}catch(e){return null;}}
@@ -282,15 +255,13 @@ var AI_CACHE={brief:null,riskNote:null,newsTs:0};
 var AI_LAST=0,AI_GAP=4200,AI_LOCK=Promise.resolve();
 var GM_DISABLED_UNTIL=0; // Gemini限流时暂时禁用的时间戳
 
-// Gemini 调用
+// Gemini 调用 (via Worker proxy)
 async function _callGemini(prompt,mt){
-  var key=K.get('gm');if(!key)return null;
-  if(Date.now()<GM_DISABLED_UNTIL)return null; // 仍在冷却期
-  var url='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key;
+  if(Date.now()<GM_DISABLED_UNTIL)return null;
   var body={contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:mt,temperature:0.7}};
-  var resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
+  var resp=await fetch(WORKER_BASE+'/gemini',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(25000)});
   if(resp.status===429||resp.status===403){
-    GM_DISABLED_UNTIL=Date.now()+60000; // 限流后60秒内不再尝试Gemini
+    GM_DISABLED_UNTIL=Date.now()+60000;
     log('Gemini限流/额度不足，60秒内切换备用引擎','warn');
     setSrc('Gemini',false);return null;
   }
@@ -303,12 +274,10 @@ async function _callGemini(prompt,mt){
   return null;
 }
 
-// 阿里云百炼 (DashScope) 通义千问调用
+// 阿里云百炼 (DashScope) 通义千问调用 (via Worker proxy)
 async function _callDashScope(prompt,mt){
-  var key=K.get('sf');if(!key)return null;
-  var url='https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
   var body={model:'qwen-plus',max_tokens:mt,messages:[{role:'user',content:prompt}],temperature:0.7};
-  var resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body),signal:AbortSignal.timeout(25000)});
+  var resp=await fetch(WORKER_BASE+'/dashscope',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
   if(!resp.ok){var errText=await resp.text();log('百炼 HTTP'+resp.status+': '+errText.substring(0,60),'err');setSrc('百炼',false);return null;}
   var d=await resp.json();
   if(d.choices&&d.choices[0]&&d.choices[0].message){
@@ -317,10 +286,8 @@ async function _callDashScope(prompt,mt){
   return null;
 }
 
-// 统一AI入口 — 自动选择可用引擎，串行限速
+// 统一AI入口 — 自动选择可用引擎，串行限速 (via Worker proxy)
 async function callAI(prompt,maxTokens){
-  if(!K.hasAI()){log('AI:无可用Key','warn');return null;}
-  // 串行锁 + 间隔控制
   var prev=AI_LOCK;var myResolve;
   AI_LOCK=new Promise(function(r){myResolve=r;});
   await prev;
@@ -329,15 +296,11 @@ async function callAI(prompt,maxTokens){
   AI_LAST=Date.now();
   var mt=maxTokens||1024;
   try{
-    // 尝试Gemini
     var result=await _callGemini(prompt,mt);
     if(result){myResolve();return result;}
-    // Gemini失败，切阿里云百炼
-    if(K.has('sf')){
-      log('切换到百炼(通义千问)...','info');
-      result=await _callDashScope(prompt,mt);
-      if(result){myResolve();return result;}
-    }
+    log('切换到百炼(通义千问)...','info');
+    result=await _callDashScope(prompt,mt);
+    if(result){myResolve();return result;}
     log('所有AI引擎均不可用','err');myResolve();return null;
   }catch(e){
     log('AI请求异常: '+(e.message||''),'err');myResolve();return null;
@@ -515,16 +478,14 @@ var vixLive=null,fgiData=null,VIX_HISTORY=null;
 // FETCHERS
 // ============================================================
 async function fetchFinnhubQuotes(){
-  var key=K.get('fh');if(!key){log('Finnhub:无Key','err');return;}
   var allItems=[];
   ['stocks','commodities','reits'].forEach(function(cat){MD[cat].forEach(function(item,idx){if(item.tk)allItems.push({cat:cat,idx:idx,tk:item.tk});});});
   allItems.push({cat:'forex',idx:0,tk:'UUP'});
   var ok=0;
-  // 并发批量请求，每批5个，尊重60次/min限速
   for(var i=0;i<allItems.length;i+=5){
     var batch=allItems.slice(i,i+5);
     var results=await Promise.allSettled(batch.map(function(it){
-      return directGet('https://finnhub.io/api/v1/quote?symbol='+it.tk+'&token='+key,8000);
+      return directGet(WORKER_BASE+'/finnhub/quote?symbol='+it.tk,8000);
     }));
     results.forEach(function(r,j){
       if(r.status==='fulfilled'&&r.value&&r.value.c>0){
@@ -633,7 +594,6 @@ async function fetchFGI(){
 }
 
 async function fetchFRED(){
-  var key=K.get('fr');if(!key){log('FRED:无Key','warn');useFREDFallback();return;}
   var series=[
     {id:'DGS10',macro:'us10y',fmt:function(v){return v.toFixed(3)+'%';},is10y:true},
     {id:'DGS2',macro:null,is2y:true,fmt:function(v){return v.toFixed(3)+'%';}},
@@ -642,10 +602,8 @@ async function fetchFRED(){
     {id:'CPIAUCSL',macro:'cpi',isCpi:true,fmt:function(v){return v.toFixed(1);}}
   ];
   var ok=0;
-  // 5个FRED指标全部并行获取
   var results=await Promise.allSettled(series.map(function(s){
-    var url='https://api.stlouisfed.org/fred/series/observations?series_id='+s.id+'&api_key='+key+'&file_type=json&sort_order=desc&limit=10';
-    return proxyGet(url,15000);
+    return directGet(WORKER_BASE+'/fred/observations?series_id='+s.id+'&sort_order=desc&limit=10',15000);
   }));
   results.forEach(function(r,i){
     var s=series[i];
@@ -673,9 +631,6 @@ function useFREDFallback(){
 
 // Supplementary macro: fetch Treasury yields + VIX via Finnhub bond/ETF proxies
 async function fetchMacroSupp(){
-  var key=K.get('fh');if(!key)return;
-  // TLT = 20+ Year Treasury Bond ETF (inversely related to yields)
-  // ^VIX via VIXY ETF proxy — less accurate but real-time
   var macroTickers=[
     {tk:'TLT',  name:'美债ETF'},
     {tk:'VIXY', name:'VIX ETF'}
@@ -683,7 +638,7 @@ async function fetchMacroSupp(){
   for(var i=0;i<macroTickers.length;i++){
     var mt=macroTickers[i];
     try{
-      var d=await directGet('https://finnhub.io/api/v1/quote?symbol='+mt.tk+'&token='+key,8000);
+      var d=await directGet(WORKER_BASE+'/finnhub/quote?symbol='+mt.tk,8000);
       if(d&&d.c>0){
         if(mt.tk==='VIXY'&&!MACRO.vix.live){
           // VIXY is a rough VIX proxy. Scale: VIXY $15≈VIX 15, $25≈VIX 25, $40≈VIX 35
@@ -788,8 +743,7 @@ async function fetchSinaNews(){
 }
 
 async function fetchFinnhubNews(){
-  var key=K.get('fh');if(!key)return null;
-  var d=await directGet('https://finnhub.io/api/v1/news?category=general&token='+key);
+  var d=await directGet(WORKER_BASE+'/finnhub/news?category=general');
   if(d&&Array.isArray(d)&&d.length>0){
     setSrc('FinnhubNews',true);log('Finnhub新闻 ✓ '+d.length+'条','ok');
     return d.slice(0,20).map(function(a){return{
