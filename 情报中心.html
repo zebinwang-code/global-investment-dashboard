@@ -472,7 +472,7 @@ crypto:[{n:'比特币',tk:'BTC',fl:'₿',p:0,c:0},{n:'以太坊',tk:'ETH',fl:'Ξ
 reits:[{n:'Prologis',tk:'PLD',fl:'🏭',p:0,c:0,sb:'物流'},{n:'Amer Tower',tk:'AMT',fl:'📡',p:0,c:0,sb:'基站'},{n:'Equinix',tk:'EQIX',fl:'💻',p:0,c:0,sb:'数据中心'},{n:'Simon',tk:'SPG',fl:'🏬',p:0,c:0,sb:'商场'},{n:'Realty Income',tk:'O',fl:'🏢',p:0,c:0,sb:'净租赁'}]
 };
 var MACRO={vix:{l:'VIX恐慌指数',v:'--',s:'加载中',cl:'var(--org)',live:false},us10y:{l:'美10Y国债',v:'--',s:'加载中',cl:'var(--blue)',live:false},fedfunds:{l:'联邦基金利率',v:'--',s:'加载中',cl:'var(--purp)',live:false},cpi:{l:'CPI(同比)',v:'--',s:'加载中',cl:'var(--red)',live:false},unemp:{l:'失业率',v:'--',s:'加载中',cl:'var(--grn)',live:false},fgi:{l:'加密恐贪指数',v:'--',s:'加载中',cl:'var(--cyan)',live:false}};
-var vixLive=null,fgiData=null,VIX_HISTORY=null;
+var vixLive=null,fgiData=null,VIX_HISTORY=null,SPY_HISTORY=null;
 
 // ============================================================
 // FETCHERS
@@ -559,6 +559,31 @@ async function fetchVIXHistory(){
       }
     }
   }catch(e){log('VIX历史获取失败: '+(e.message||''),'warn');}
+}
+
+// 获取SPY 30天日线历史 — 用于计算每日波动率和趋势
+async function fetchSPYHistory(){
+  try{
+    var d=await directGet('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1mo',10000);
+    if(!d)d=await proxyGet('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1mo',12000);
+    if(d&&d.chart&&d.chart.result&&d.chart.result[0]){
+      var r=d.chart.result[0];
+      var ts=r.timestamp||[];
+      var closes=(r.indicators&&r.indicators.quote&&r.indicators.quote[0])?r.indicators.quote[0].close:[];
+      if(ts.length>=10&&closes.length>=10){
+        SPY_HISTORY=[];
+        for(var i=0;i<ts.length;i++){
+          if(closes[i]===null||closes[i]===undefined)continue;
+          var dt=new Date(ts[i]*1000);
+          var prevClose=(i>0&&closes[i-1])?closes[i-1]:closes[i];
+          var dailyChg=(closes[i]-prevClose)/prevClose*100;
+          SPY_HISTORY.push({d:(dt.getMonth()+1)+'/'+dt.getDate(),close:closes[i],chg:dailyChg});
+        }
+        log('SPY历史 ✓ '+SPY_HISTORY.length+'天','ok');
+        return;
+      }
+    }
+  }catch(e){log('SPY历史获取失败: '+(e.message||''),'warn');}
 }
 
 async function fetchCrypto(){
@@ -1080,27 +1105,79 @@ function calcRisk(){
     vixSc*0.35 + volSc*0.20 + macroR.sc*0.20 + trendSc*0.15 + fgiSc*0.10
   )));
 
-  // 30天历史——优先使用真实VIX历史数据
+  // 30天历史——多因子一致性计算，与当日风险使用同一套公式
   var hist=[];
+  // 构建日期索引: VIX历史、FGI历史、SPY历史
+  var vixMap={},fgiMap={},spyMap={};
+  if(VIX_HISTORY)VIX_HISTORY.forEach(function(d){vixMap[d.d]=d.v;});
+  if(fgiData){
+    fgiData.slice(0,30).forEach(function(d){
+      var dt=new Date(d.ts);var key=(dt.getMonth()+1)+'/'+dt.getDate();
+      fgiMap[key]=d.v;
+    });
+  }
+  if(SPY_HISTORY)SPY_HISTORY.forEach(function(d){spyMap[d.d]={chg:d.chg,close:d.close};});
+
+  // 用VIX历史的日期作为主时间轴（交易日），回退到SPY历史
+  var dateKeys=[];
   if(VIX_HISTORY&&VIX_HISTORY.length>=10){
-    VIX_HISTORY.forEach(function(d){
-      var dayVixSc=vixToScore(d.v);
-      // 历史风险 = VIX权重70% + 基准宏观30%
-      var dayRisk=Math.round(dayVixSc*0.70+macroR.sc*0.30);
-      hist.push({d:d.d,v:Math.max(5,Math.min(95,dayRisk))});
+    dateKeys=VIX_HISTORY.map(function(d){return d.d;});
+  }else if(SPY_HISTORY&&SPY_HISTORY.length>=10){
+    dateKeys=SPY_HISTORY.map(function(d){return d.d;});
+  }else if(fgiData&&fgiData.length>=10){
+    dateKeys=fgiData.slice(0,30).reverse().map(function(d){
+      var dt=new Date(d.ts);return(dt.getMonth()+1)+'/'+dt.getDate();
     });
   }
-  // 兜底：FGI历史
-  if(hist.length<5&&fgiData&&fgiData.length>=10){
-    hist=[];
-    var days=fgiData.slice(0,30).reverse();
-    days.forEach(function(d){
-      var dt=new Date(d.ts);
-      var estVix=d.v<15?32:d.v<25?27:d.v<35?22:d.v<45?19:d.v<55?17:d.v<65?15:d.v<75?13:11;
-      var dayRisk=Math.round(vixToScore(estVix)*0.70+macroR.sc*0.30);
-      hist.push({d:(dt.getMonth()+1)+'/'+dt.getDate(),v:Math.max(5,Math.min(95,dayRisk))});
+
+  if(dateKeys.length>=5){
+    dateKeys.forEach(function(dk,idx){
+      // 因子1: VIX (35%)
+      var dayVix=vixMap[dk];
+      var dayVixSc=dayVix?vixToScore(dayVix):vixToScore(vix); // 缺失用今日值
+
+      // 因子2: 波动率 (20%) — SPY当日绝对涨跌幅
+      var dayVolSc=volSc; // 默认用今日
+      if(spyMap[dk]){
+        var absChg=Math.abs(spyMap[dk].chg);
+        dayVolSc=absChg<0.3?10:absChg<0.6?20:absChg<1.0?35:absChg<1.5?50:absChg<2.0?65:absChg<3.0?80:92;
+      }
+
+      // 因子3: 宏观 (20%) — 变化慢，用当前值近似
+      var dayMacroSc=macroR.sc;
+
+      // 因子4: 趋势 (15%) — SPY当日方向 + 近3日滚动窗口
+      var dayTrendSc=trendSc; // 默认用今日
+      if(SPY_HISTORY&&SPY_HISTORY.length>3){
+        // 找到当前日期在SPY历史中的位置
+        var spyIdx=-1;
+        for(var si=0;si<SPY_HISTORY.length;si++){if(SPY_HISTORY[si].d===dk){spyIdx=si;break;}}
+        if(spyIdx>=0){
+          // 近3日平均涨跌 (含当日)
+          var window=SPY_HISTORY.slice(Math.max(0,spyIdx-2),spyIdx+1);
+          var avgChg=window.reduce(function(s,d){return s+d.chg;},0)/window.length;
+          var downDays=window.filter(function(d){return d.chg<0;}).length;
+          var ts2=50;
+          if(avgChg<-2)ts2=85;else if(avgChg<-1)ts2=72;else if(avgChg<-0.5)ts2=60;
+          else if(avgChg>1)ts2=20;else if(avgChg>0.5)ts2=32;else if(avgChg>0)ts2=42;
+          if(downDays>=3)ts2=Math.min(95,ts2+12);
+          dayTrendSc=Math.max(5,Math.min(95,ts2));
+        }
+      }
+
+      // 因子5: FGI (10%)
+      var dayFgi=fgiMap[dk];
+      var dayFgiSc=dayFgi!==undefined?fgiToRisk(dayFgi):fgiSc;
+
+      // 同权重公式
+      var dayRisk=Math.max(0,Math.min(100,Math.round(
+        dayVixSc*0.35 + dayVolSc*0.20 + dayMacroSc*0.20 + dayTrendSc*0.15 + dayFgiSc*0.10
+      )));
+      hist.push({d:dk,v:dayRisk});
     });
   }
+
+  // 最终兜底
   if(hist.length<5){
     hist=[];
     for(var i=6;i>=0;i--){
@@ -1173,7 +1250,7 @@ async function fetchAllData(){
   await Promise.allSettled([
     fetchCrypto(),fetchForex(),fetchFGI(),
     fetchFinnhubQuotes(),fetchFRED(),
-    fetchVIX(),fetchVIXHistory(),fetchMacroSupp(),fetchYahooYields()
+    fetchVIX(),fetchVIXHistory(),fetchSPYHistory(),fetchMacroSupp(),fetchYahooYields()
   ]);
   // VIX兜底：如果Yahoo/VIXY都失败，且FGI已加载，用FGI推算
   if(!MACRO.vix.live&&fgiData){
@@ -1199,7 +1276,13 @@ async function refreshAll(){
   // 风险计算（不等新闻）
   var r=calcRisk();renderRisk(r);renderRiskChart(r);
   var srcEl=document.getElementById('rChartSrc');
-  if(srcEl)srcEl.innerHTML=r.hist.length>=20?'<span class="ab-d ab-ok"></span>VIX历史数据':'<span class="ab-d ab-w"></span>数据不足';
+  if(srcEl){
+    var sources=[];
+    if(VIX_HISTORY&&VIX_HISTORY.length>=10)sources.push('VIX');
+    if(SPY_HISTORY&&SPY_HISTORY.length>=10)sources.push('SPY');
+    if(fgiData&&fgiData.length>=10)sources.push('FGI');
+    srcEl.innerHTML=sources.length>=2?'<span class="ab-d ab-ok"></span>多因子('+sources.join('+')+')':sources.length===1?'<span class="ab-d ab-w"></span>'+sources[0]+'单源':'<span class="ab-d ab-w"></span>数据不足';
+  }
   // 新闻在后台完成
   await newsP;
   // 风险建议（本地规则，无需AI）
