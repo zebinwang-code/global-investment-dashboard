@@ -1015,29 +1015,40 @@ async function aiDeepAnalysis(){
   }
 }
 
-// RISK — fully data-driven, no random components
-// Factor 1: VIX (28%) — market implied volatility
+// RISK — fully data-driven, continuous linear interpolation for smooth trends
+// Helper: piecewise linear interpolation — eliminates plateaus
+function lerp(x,points){
+  // points = [[x0,y0],[x1,y1],...] sorted by x ascending
+  if(x<=points[0][0])return points[0][1];
+  if(x>=points[points.length-1][0])return points[points.length-1][1];
+  for(var i=0;i<points.length-1;i++){
+    if(x>=points[i][0]&&x<=points[i+1][0]){
+      var t=(x-points[i][0])/(points[i+1][0]-points[i][0]);
+      return points[i][1]+t*(points[i+1][1]-points[i][1]);
+    }
+  }
+  return points[points.length-1][1];
+}
+// Factor 1: VIX — continuous mapping
 function vixToScore(vix){
   if(!vix||vix<=0)return 40;
-  if(vix<12)return 8;if(vix<14)return 15;if(vix<16)return 22;if(vix<18)return 30;
-  if(vix<20)return 38;if(vix<22)return 45;if(vix<25)return 55;if(vix<28)return 65;
-  if(vix<32)return 75;if(vix<40)return 85;return 95;
+  return lerp(vix,[[10,5],[12,10],[14,18],[16,26],[18,34],[20,42],[22,50],[25,60],[28,68],[32,78],[40,88],[50,95]]);
 }
-// Factor 2: FGI inverted (22%) — extreme fear=high risk, greed=moderate risk (complacency)
+// Factor 2: FGI inverted — U-shaped: extreme fear=high risk, extreme greed=complacency risk
 function fgiToRisk(fgi){
   if(fgi===null||fgi===undefined)return 50;
-  if(fgi<10)return 90;if(fgi<20)return 80;if(fgi<30)return 68;if(fgi<40)return 55;
-  if(fgi<50)return 42;if(fgi<60)return 35;if(fgi<70)return 40;if(fgi<80)return 55;
-  if(fgi<90)return 68;return 78; // extreme greed = complacency risk
+  return lerp(fgi,[[0,92],[10,85],[20,75],[30,62],[40,50],[50,38],[60,32],[65,35],[75,45],[85,60],[95,72],[100,80]]);
 }
-// Factor 3: Market volatility (15%) — actual average absolute daily change
+// Factor 3: Market volatility — continuous from daily absolute change
 function volToScore(stocks){
   var items=stocks.filter(function(s){return s._l&&s.c!==0;});
   if(items.length===0)return 40;
   var avgAbsChg=items.reduce(function(s,m){return s+Math.abs(m.c);},0)/items.length;
-  // 0-0.5% = very calm, 0.5-1% = normal, 1-2% = elevated, 2-3% = high, 3%+ = extreme
-  if(avgAbsChg<0.3)return 10;if(avgAbsChg<0.6)return 20;if(avgAbsChg<1.0)return 35;
-  if(avgAbsChg<1.5)return 50;if(avgAbsChg<2.0)return 65;if(avgAbsChg<3.0)return 80;return 92;
+  return lerp(avgAbsChg,[[0,5],[0.3,12],[0.5,20],[0.8,30],[1.0,40],[1.5,55],[2.0,68],[2.5,78],[3.0,85],[4.0,92],[5.0,98]]);
+}
+// volToScoreRaw — for historical SPY single-stock absolute change
+function volToScoreRaw(absChg){
+  return lerp(absChg,[[0,5],[0.3,12],[0.5,20],[0.8,30],[1.0,40],[1.5,55],[2.0,68],[2.5,78],[3.0,85],[4.0,92],[5.0,98]]);
 }
 // Factor 4: Macro environment (20%) — derived from real rates and spreads
 function macroToScore(){
@@ -1072,21 +1083,22 @@ function macroToScore(){
   }
   return{sc:Math.max(15,Math.min(85,Math.round(score))),real:dataPoints>=2};
 }
-// Factor 5: Trend/Momentum (15%) — market direction from real price data
+// Factor 5: Trend/Momentum (15%) — continuous, from average daily change
 function trendToScore(stocks){
   var items=stocks.filter(function(s){return s._l&&s.c!==0;});
   if(items.length===0)return 50;
   var downCount=items.filter(function(s){return s.c<0;}).length;
   var downRatio=downCount/items.length;
   var avgChg=items.reduce(function(s,m){return s+m.c;},0)/items.length;
-  // Broad market decline = higher risk
-  var sc=50;
-  if(avgChg<-2)sc=85;else if(avgChg<-1)sc=72;else if(avgChg<-0.5)sc=60;
-  else if(avgChg>1)sc=20;else if(avgChg>0.5)sc=32;else if(avgChg>0)sc=42;
-  // Breadth: if >70% of markets are down, additional risk
-  if(downRatio>0.8)sc=Math.min(95,sc+15);
-  else if(downRatio>0.6)sc=Math.min(90,sc+8);
+  // Continuous: negative change = higher risk, positive = lower
+  var sc=lerp(avgChg,[[-3,92],[-2,82],[-1,68],[-0.5,58],[0,48],[0.5,38],[1,28],[2,18],[3,10]]);
+  // Breadth adjustment: broad decline adds risk
+  sc+=lerp(downRatio,[[0.4,0],[0.6,5],[0.8,12],[1.0,18]]);
   return Math.max(5,Math.min(95,sc));
+}
+// trendToScoreRaw — for historical SPY single-stock change
+function trendToScoreRaw(avgChg){
+  return Math.max(5,Math.min(95,lerp(avgChg,[[-3,92],[-2,82],[-1,68],[-0.5,58],[0,48],[0.5,38],[1,28],[2,18],[3,10]])));
 }
 
 function calcRisk(){
@@ -1136,32 +1148,24 @@ function calcRisk(){
       var dayVix=vixMap[dk];
       var dayVixSc=dayVix?vixToScore(dayVix):vixToScore(vix); // 缺失用今日值
 
-      // 因子2: 波动率 (20%) — SPY当日绝对涨跌幅
+      // 因子2: 波动率 (20%) — SPY当日绝对涨跌幅，连续插值
       var dayVolSc=volSc; // 默认用今日
       if(spyMap[dk]){
-        var absChg=Math.abs(spyMap[dk].chg);
-        dayVolSc=absChg<0.3?10:absChg<0.6?20:absChg<1.0?35:absChg<1.5?50:absChg<2.0?65:absChg<3.0?80:92;
+        dayVolSc=volToScoreRaw(Math.abs(spyMap[dk].chg));
       }
 
       // 因子3: 宏观 (20%) — 变化慢，用当前值近似
       var dayMacroSc=macroR.sc;
 
-      // 因子4: 趋势 (15%) — SPY当日方向 + 近3日滚动窗口
+      // 因子4: 趋势 (15%) — SPY近3日滚动窗口，连续插值
       var dayTrendSc=trendSc; // 默认用今日
       if(SPY_HISTORY&&SPY_HISTORY.length>3){
-        // 找到当前日期在SPY历史中的位置
         var spyIdx=-1;
         for(var si=0;si<SPY_HISTORY.length;si++){if(SPY_HISTORY[si].d===dk){spyIdx=si;break;}}
         if(spyIdx>=0){
-          // 近3日平均涨跌 (含当日)
-          var window=SPY_HISTORY.slice(Math.max(0,spyIdx-2),spyIdx+1);
-          var avgChg=window.reduce(function(s,d){return s+d.chg;},0)/window.length;
-          var downDays=window.filter(function(d){return d.chg<0;}).length;
-          var ts2=50;
-          if(avgChg<-2)ts2=85;else if(avgChg<-1)ts2=72;else if(avgChg<-0.5)ts2=60;
-          else if(avgChg>1)ts2=20;else if(avgChg>0.5)ts2=32;else if(avgChg>0)ts2=42;
-          if(downDays>=3)ts2=Math.min(95,ts2+12);
-          dayTrendSc=Math.max(5,Math.min(95,ts2));
+          var win=SPY_HISTORY.slice(Math.max(0,spyIdx-2),spyIdx+1);
+          var avgChg=win.reduce(function(s,d){return s+d.chg;},0)/win.length;
+          dayTrendSc=trendToScoreRaw(avgChg);
         }
       }
 
