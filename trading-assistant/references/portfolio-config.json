@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "last_updated": "2026-03-27 17:21",
+    "trading_mode": "稳健",
+    "base_currency": "CNY",
+    "data_source": "excel+api"
+  },
+  "risk_params": {
+    "max_single_position": 0.15,
+    "max_total_position": 0.8,
+    "stop_loss_pct": -0.08,
+    "take_profit_pct": 0.3,
+    "rebalance_threshold": 0.05,
+    "max_correlated_exposure": 0.4,
+    "max_holdings": 15
+  },
+  "portfolio": {
+    "holdings": [
+      {
+        "symbol": "AAPL",
+        "name": "苹果",
+        "market": "US",
+        "cost_price": 165.0,
+        "quantity": 100,
+        "target_weight": 0.15,
+        "sector": "科技",
+        "notes": "核心"
+      },
+      {
+        "symbol": "0700.HK",
+        "name": "腾讯控股",
+        "market": "HK",
+        "cost_price": 320.0,
+        "quantity": 200,
+        "target_weight": 0.12,
+        "sector": "科技",
+        "notes": "核心"
+      },
+      {
+        "symbol": "600519.SS",
+        "name": "贵州茅台",
+        "market": "CN",
+        "cost_price": 1680.0,
+        "quantity": 10,
+        "target_weight": 0.1,
+        "sector": "消费",
+        "notes": "价值",
+        "custom_stop_loss": 1545.0
+      }
+    ],
+    "watchlist": [
+      {
+        "symbol": "NVDA",
+        "name": "英伟达",
+        "market": "US",
+        "target_entry": 110.0,
+        "sector": "科技",
+        "reason": "AI算力龙头，等待回调建仓",
+        "priority": "高"
+      },
+      {
+        "symbol": "9988.HK",
+        "name": "阿里巴巴",
+        "market": "HK",
+        "target_entry": 85.0,
+        "sector": "科技",
+        "reason": "估值修复预期",
+        "priority": "中"
+      },
+      {
+        "symbol": "000858.SZ",
+        "name": "五粮液",
+        "market": "CN",
+        "target_entry": 130.0,
+        "sector": "消费",
+        "reason": "消费复苏受益",
+        "priority": "低"
+      }
+    ]
+  },
+  "api_keys": {
+    "finnhub": "d6v3uqpr01qig546ee8gd6v3uqpr01qig546ee90",
+    "fred": "a204f669d353de5bc5e4c0ed0a2cfd27",
+    "alpha_vantage": "AOOBDQ5RV7L3PTZW",
+    "newsapi": "48ab35fa71f74bcf865fba61ddd065e1",
+    "twelve_data": "",
+    "comment": "已从全球投资情报Dashboard同步"
+  }
+}

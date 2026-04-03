@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI交易助手 - 策略组合配置</title>
+<style>
+:root{--b0:#0a0e17;--b1:#111827;--b2:#1a2332;--b3:#1f2b3d;--bd:#2a3548;--t1:#e5e7eb;--t2:#9ca3af;--t3:#6b7280;--blue:#3b82f6;--cyan:#06b6d4;--grn:#10b981;--red:#ef4444;--org:#f59e0b;--purp:#8b5cf6;--pink:#ec4899;--teal:#14b8a6}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--b0);color:var(--t1);min-height:100vh}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--b0)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+
+.header{background:linear-gradient(135deg,rgba(17,24,39,.98),rgba(26,35,50,.95));border-bottom:1px solid var(--bd);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.header h1{font-size:18px;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .sub{font-size:10px;color:var(--t3)}
+
+.container{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 56px);overflow:hidden}
+@media(max-width:900px){.container{grid-template-columns:1fr;height:auto}.sidebar{max-height:40vh;overflow-y:auto}}
+
+/* 左侧策略选择 */
+.sidebar{background:var(--b1);border-right:1px solid var(--bd);overflow-y:auto;padding:12px}
+.strat-card{background:var(--b2);border:2px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:.2s}
+.strat-card:hover{border-color:rgba(59,130,246,.4);transform:translateY(-1px)}
+.strat-card.active{border-color:var(--blue);box-shadow:0 0 20px rgba(59,130,246,.15)}
+.strat-icon{font-size:24px;margin-bottom:4px}
+.strat-name{font-size:13px;font-weight:700;margin-bottom:2px}
+.strat-origin{font-size:9px;color:var(--t3);margin-bottom:4px}
+.strat-desc{font-size:10px;color:var(--t2);line-height:1.4}
+.strat-tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.strat-tag{font-size:8px;padding:2px 6px;border-radius:8px;font-weight:600}
+
+/* 右侧内容 */
+.main{overflow-y:auto;padding:16px 20px}
+.panel{background:var(--b2);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.panel-title{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+
+/* 策略信息头 */
+.strat-header{display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.strat-header .icon{font-size:40px}
+.strat-header .info h2{font-size:18px;font-weight:800;margin-bottom:2px}
+.strat-header .info p{font-size:11px;color:var(--t2);max-width:600px;line-height:1.5}
+.strat-header .badge{padding:4px 12px;border-radius:12px;font-size:10px;font-weight:700}
+
+/* 规则卡 */
+.rule-section{margin-bottom:14px}
+.rule-section-title{font-size:12px;font-weight:700;margin-bottom:8px;padding:6px 10px;border-radius:6px;display:inline-block}
+.rule-section-title.buy{background:rgba(16,185,129,.12);color:var(--grn)}
+.rule-section-title.sell{background:rgba(239,68,68,.12);color:var(--red)}
+.rule-section-title.hold{background:rgba(59,130,246,.12);color:var(--blue)}
+.rule-section-title.clear{background:rgba(245,158,11,.12);color:var(--org)}
+.rule-section-title.position{background:rgba(139,92,246,.12);color:var(--purp)}
+.rule-section-title.special{background:rgba(6,182,212,.12);color:var(--cyan)}
+
+.rule-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;transition:.15s}
+.rule-card:hover{background:rgba(255,255,255,.04)}
+.rule-toggle{flex-shrink:0;margin-top:2px}
+.rule-toggle input{display:none}
+.rule-toggle label{width:36px;height:20px;background:var(--bd);border-radius:10px;display:block;position:relative;cursor:pointer;transition:.2s}
+.rule-toggle label::after{content:'';width:16px;height:16px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:.2s}
+.rule-toggle input:checked+label{background:var(--grn)}
+.rule-toggle input:checked+label::after{left:18px}
+.rule-body{flex:1;min-width:0}
+.rule-name{font-size:12px;font-weight:700;margin-bottom:2px}
+.rule-cond{font-size:10px;color:var(--cyan);font-family:'SF Mono',Monaco,monospace;margin-bottom:2px;word-break:break-all}
+.rule-desc{font-size:10px;color:var(--t3);line-height:1.4}
+.rule-priority{font-size:8px;padding:1px 6px;border-radius:6px;font-weight:600;flex-shrink:0}
+.pri-highest{background:rgba(239,68,68,.15);color:var(--red)}
+.pri-high{background:rgba(245,158,11,.15);color:var(--org)}
+.pri-medium{background:rgba(59,130,246,.15);color:var(--blue)}
+.pri-required{background:rgba(139,92,246,.15);color:var(--purp)}
+
+/* 底栏 */
+.bottom-bar{position:sticky;bottom:0;background:linear-gradient(0deg,var(--b0) 60%,transparent);padding:16px 20px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.btn{padding:8px 20px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:.2s}
+.btn-primary{background:linear-gradient(135deg,var(--blue),var(--cyan));color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(59,130,246,.3)}
+.btn-outline{background:transparent;border:1px solid var(--bd);color:var(--t2)}
+.btn-outline:hover{border-color:var(--blue);color:var(--t1)}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.status-text{font-size:10px;color:var(--t3)}
+.active-count{color:var(--cyan);font-weight:700}
+
+/* 对比面板 */
+.compare-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.compare-cell{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:10px;text-align:center}
+.compare-cell .label{font-size:9px;color:var(--t3);margin-bottom:4px}
+.compare-cell .value{font-size:18px;font-weight:800}
+
+/* 导出弹窗 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;justify-content:center;align-items:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--b2);border:1px solid var(--bd);border-radius:16px;padding:20px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:16px;margin-bottom:12px}
+.modal pre{background:var(--b0);border:1px solid var(--bd);border-radius:8px;padding:12px;font-size:10px;overflow-x:auto;max-height:400px;overflow-y:auto;color:var(--cyan);font-family:'SF Mono',Monaco,monospace}
+.modal .btn-row{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;opacity:0;transition:.3s;z-index:300;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🤖 AI交易助手 — 策略组合配置</h1>
+    <div class="sub">选择策略组合 → 开启/关闭规则 → 导出到 trading-rules.json</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span class="status-text">已启用 <span class="active-count" id="activeCount">0</span> 条规则</span>
+    <button class="btn btn-outline" onclick="showCompare()">📊 策略对比</button>
+    <button class="btn btn-primary" onclick="exportRules()">💾 导出配置</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main" id="main">
+    <div style="text-align:center;padding:60px 20px;color:var(--t3)">
+      <div style="font-size:48px;margin-bottom:12px">👈</div>
+      <div style="font-size:14px">从左侧选择一套策略组合开始配置</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==============================
+// 七套策略完整数据
+// ==============================
+const STRATEGIES = {
+  "current": {
+    icon: "🎯", name: "当前策略（达里奥+巴菲特）",
+    origin: "自选 · 已激活",
+    color: "--blue",
+    tags: [{t:"稳健价值",c:"--blue"},{t:"宏观配置",c:"--purp"},{t:"长期持有",c:"--grn"}],
+    desc: "达里奥全天候决定仓位比例，巴菲特价值投资决定标的选择。五维评分系统驱动买卖信号。",
+    buy: [
+      {id:"B1",name:"综合评分达标",cond:"composite_score >= 7.5",on:true,pri:"必要条件",desc:"五维综合评分需达到7.5以上才考虑买入"},
+      {id:"B2",name:"基本面过关",cond:"fundamental_score >= 7.0",on:true,pri:"必要条件",desc:"巴菲特原则：不买基本面不好的股票"},
+      {id:"B3",name:"安全边际充足",cond:"price <= intrinsic_value * 0.8",on:true,pri:"建议",desc:"当前价低于内在价值的80%，即有20%安全边际"},
+      {id:"B4",name:"技术面支撑",cond:"technical_score >= 6.5 OR price_near_support",on:true,pri:"辅助",desc:"技术面不差或者价格在支撑位附近"},
+      {id:"B5",name:"资金面配合",cond:"capital_score >= 7.0",on:true,pri:"辅助",desc:"有主力或北向资金流入配合"},
+    ],
+    sell: [
+      {id:"S1",name:"止损纪律",cond:"pnl_pct <= stop_loss_pct",on:true,pri:"最高",desc:"亏损达到止损线必须执行，无例外"},
+      {id:"S2",name:"基本面恶化",cond:"fundamental_score < 5.0",on:true,pri:"高",desc:"基本面跌破5分，说明公司质量出问题"},
+      {id:"S3",name:"估值过高",cond:"pe_percentile > 90",on:true,pri:"中",desc:"估值处于历史90%分位以上，考虑分批止盈"},
+      {id:"S4",name:"宏观象限恶化",cond:"quadrant == '滞胀' AND macro_score < 3.0",on:true,pri:"高",desc:"达里奥框架：滞胀环境对股票最不利"},
+      {id:"S5",name:"综合评分持续下降",cond:"composite_score < 5.0 AND 连续3日下降",on:true,pri:"中",desc:"多维度持续走弱，趋势可能反转"},
+    ],
+    clear: [
+      {id:"C1",name:"止损强制清仓",cond:"pnl_pct <= stop_loss_pct * 1.5",on:true,pri:"最高",desc:"亏损达到止损线1.5倍，无论任何理由必须清仓"},
+      {id:"C2",name:"基本面崩塌",cond:"fundamental_score < 3.0",on:true,pri:"最高",desc:"财务造假/核心业务崩溃等不可逆损害"},
+      {id:"C3",name:"黑天鹅事件",cond:"news_score < 2.0 AND 重大不可逆事件",on:true,pri:"最高",desc:"监管打击/退市风险等"},
+      {id:"C4",name:"综合评分极低",cond:"composite_score < 4.0",on:true,pri:"高",desc:"所有维度都在释放负面信号"},
+    ],
+    hold: [
+      {id:"H1",name:"评分合理区间",cond:"6.0 <= composite_score <= 8.0",on:true,desc:"不需要频繁操作"},
+      {id:"H2",name:"基本面稳定",cond:"fundamental_score >= 6.0",on:true,desc:"巴菲特：好公司长期持有"},
+      {id:"H3",name:"仓位合理",cond:"偏离目标 < rebalance_threshold",on:true,desc:"不超过再平衡阈值时无需调整"},
+    ],
+    special: [
+      {id:"SP1",name:"财报季",cond:"财报发布前3天不建新仓",on:true,desc:"避免财报博弈"},
+      {id:"SP2",name:"FOMC会议",cond:"会议前后1天降低操作频率",on:true,desc:"观察市场反应再行动"},
+      {id:"SP3",name:"高VIX环境",cond:"VIX > 30 → 暂停加仓，仅允许减仓",on:true,desc:"极度恐慌时保存实力"},
+    ],
+    position: [
+      {id:"P1",name:"达里奥全天候配置",cond:"金发女孩70-85%|过热50-65%|衰退30-45%|滞胀20-35%",on:true,desc:"根据宏观象限调整股票仓位"},
+      {id:"P2",name:"行业集中度上限",cond:"单行业 <= 40%",on:true,desc:"避免同一行业过度集中"},
+      {id:"P3",name:"再平衡阈值",cond:"偏离5%触发，频率≤每周1次",on:true,desc:"实际偏离目标超过5%时调整"},
+    ],
+  },
+
+  "turtle": {
+    icon:"🐢", name:"海龟交易法则",
+    origin:"理查德·丹尼斯 · 1983",
+    color:"--grn",
+    tags:[{t:"趋势跟踪",c:"--grn"},{t:"机械化",c:"--cyan"},{t:"ATR仓位",c:"--org"}],
+    desc:"完全机械化的趋势跟踪系统。用ATR管理仓位让每个持仓风险贡献相等，用唐奇安通道突破确认趋势，严格止损不带主观判断。年均80%的收益让它成为交易史上最著名的实验。",
+    buy:[
+      {id:"TURTLE-B1",name:"唐奇安通道突破",cond:"price > highest_high_20d",on:false,pri:"核心",desc:"突破20日最高价建仓（系统1），系统2用55日更保守"},
+      {id:"TURTLE-B2",name:"ATR仓位计算",cond:"unit = equity * 0.01 / ATR_20",on:false,pri:"核心",desc:"波动大买少、波动小买多，每个持仓风险贡献相等"},
+      {id:"TURTLE-B3",name:"金字塔加仓",cond:"每涨0.5×ATR加仓1单位，最多4单位",on:false,pri:"建议",desc:"趋势确认后逐步加码，不一次性全部买入"},
+    ],
+    sell:[
+      {id:"TURTLE-S1",name:"ATR移动止损",cond:"price < entry - 2×ATR_20",on:false,pri:"最高",desc:"止损位在入场价下方2倍ATR处，随加仓上移"},
+      {id:"TURTLE-S2",name:"10日低点止盈",cond:"price < lowest_low_10d",on:false,pri:"高",desc:"让利润奔跑的核心机制：只有跌破10日低点才止盈"},
+      {id:"TURTLE-S3",name:"关联限制",cond:"同方向关联标的≤6单位，总≤12单位",on:false,pri:"高",desc:"防止过度集中于同一方向或同一板块"},
+    ],
+    clear:[
+      {id:"TURTLE-C1",name:"突破失败清仓",cond:"入场后价格回落至突破前区间内",on:false,pri:"高",desc:"假突破识别：突破后快速回落说明趋势未确立"},
+    ],
+    hold:[
+      {id:"TURTLE-H1",name:"趋势持续持有",cond:"价格在20日通道内且未触发止盈/止损",on:false,desc:"海龟的核心纪律：趋势未变不要提前下车"},
+    ],
+    position:[
+      {id:"TURTLE-P1",name:"波动率平价",cond:"每个标的风险贡献 = 总资金的1%",on:false,desc:"ATR仓位管理的本质：让组合中每个标的的风险权重相等"},
+    ],
+  },
+
+  "livermore": {
+    icon:"📊", name:"利弗莫尔关键点法",
+    origin:"杰西·利弗莫尔 · 《股票大作手操盘术》",
+    color:"--cyan",
+    tags:[{t:"关键价位",c:"--cyan"},{t:"试探建仓",c:"--blue"},{t:"波段",c:"--org"}],
+    desc:"识别最小阻力方向，在关键价位（前高/整数关口/密集成交区）突破时入场。核心理念：先用小仓位试探，确认正确后才加码。绝不在亏损时摊平成本。",
+    buy:[
+      {id:"LIVER-B1",name:"关键点突破",cond:"price突破盘整高点 AND vol>1.5×avg_vol",on:false,pri:"核心",desc:"在关键价位被有效突破（放量确认）时入场"},
+      {id:"LIVER-B2",name:"试探性建仓",cond:"首次建仓 ≤ 计划仓位的20%",on:false,pri:"核心",desc:"先用小仓位试探市场反应，防止一次性重仓犯错"},
+      {id:"LIVER-B3",name:"盈利后加仓",cond:"试探仓盈利>3% AND 趋势方向未变",on:false,pri:"建议",desc:"只在盈利时加码，绝不在亏损时摊平成本"},
+    ],
+    sell:[
+      {id:"LIVER-S1",name:"关键支撑破位",cond:"price跌破关键支撑 AND 放量",on:false,pri:"高",desc:"趋势反转信号出现时果断退出"},
+      {id:"LIVER-S2",name:"10%总资金保护",cond:"单笔亏损 ≤ 总资金10%",on:false,pri:"最高",desc:"硬性止损红线，保护本金永远第一"},
+      {id:"LIVER-S3",name:"高潮顶部识别",cond:"巨量长上影 OR 加速赶顶",on:false,pri:"中",desc:"市场在贪婪最盛时见顶，量价背离是危险信号"},
+    ],
+    clear:[
+      {id:"LIVER-C1",name:"试探失败清仓",cond:"试探仓亏损>5% → 全部退出",on:false,pri:"高",desc:"试探的目的就是低成本验证，错了立刻走"},
+    ],
+    hold:[
+      {id:"LIVER-H1",name:"利弗莫尔坐稳法则",cond:"趋势方向正确 AND 未触及关键价位",on:false,desc:"赚大钱靠的是坐着不动，不是频繁交易"},
+    ],
+  },
+
+  "soros": {
+    icon:"🌊", name:"索罗斯反身性",
+    origin:"乔治·索罗斯 · 《金融炼金术》",
+    color:"--purp",
+    tags:[{t:"宏观对冲",c:"--purp"},{t:"反身性",c:"--pink"},{t:"拐点捕捉",c:"--org"}],
+    desc:"市场参与者的认知偏差会影响市场本身，形成自我强化的正反馈循环。在泡沫形成初期入场，在正反馈循环弱化时离场。擅长捕捉政策拐点和极端情绪的非对称机会。",
+    buy:[
+      {id:"SOROS-B1",name:"反身性正循环确立",cond:"基本面改善→股价涨→信心增→资金流入（正反馈）",on:false,pri:"核心",desc:"在正反馈循环确立早期入场：信贷扩张加速、资金持续流入、情绪从怀疑转乐观"},
+      {id:"SOROS-B2",name:"极端恐慌逆向",cond:"fear_greed<20 AND 基本面无实质恶化 AND VIX>35",on:false,pri:"高",desc:"在别人恐惧时贪婪——但前提是确认恐慌源于情绪而非基本面崩塌"},
+      {id:"SOROS-B3",name:"政策拐点博弈",cond:"央行从紧缩转宽松 OR 重大产业政策出台",on:false,pri:"高",desc:"政策转向是最大的宏观催化剂，提供非对称机会"},
+    ],
+    sell:[
+      {id:"SOROS-S1",name:"反身性循环见顶",cond:"估值脱离基本面 AND 信贷增速放缓 AND 边际资金减少",on:false,pri:"高",desc:"正反馈循环弱化时准备退出，不必等到崩盘"},
+      {id:"SOROS-S2",name:"先出后想原则",cond:"发现判断错误 → 立即离场再做分析",on:false,pri:"最高",desc:"索罗斯核心风控：活着比正确重要。出错时第一反应是减仓"},
+    ],
+    clear:[
+      {id:"SOROS-C1",name:"反身性崩溃",cond:"正反馈转为负反馈（恐慌性抛售自我强化）",on:false,pri:"最高",desc:"负反馈循环一旦启动会加速，必须在早期退出"},
+    ],
+  },
+
+  "lynch": {
+    icon:"📈", name:"彼得·林奇GARP",
+    origin:"彼得·林奇 · 《战胜华尔街》",
+    color:"--teal",
+    tags:[{t:"成长价值",c:"--teal"},{t:"PEG估值",c:"--grn"},{t:"中长线",c:"--blue"}],
+    desc:"以合理价格买入成长股(Growth At Reasonable Price)。用PEG替代单纯PE估值，关注日常生活中的投资线索。六类股票分类法针对性制定不同策略。",
+    buy:[
+      {id:"LYNCH-B1",name:"PEG黄金法则",cond:"PEG ≤ 1.0（PE / 盈利增速 ≤ 1）",on:false,pri:"核心",desc:"PEG<0.5极佳，0.5-1.0合理，>1.5偏贵，>2.0太贵"},
+      {id:"LYNCH-B2",name:"六类股票分类",cond:"确认标的属于：缓慢/稳定/快速增长/周期/困境反转/隐蔽资产",on:false,pri:"建议",desc:"不同类型用不同策略。快速增长看PEG，周期看PE底部，困境看资产负债表"},
+      {id:"LYNCH-B3",name:"机构关注度低",cond:"机构持仓比例较低 OR 分析师覆盖少",on:false,pri:"辅助",desc:"偏好被忽视的好公司，机构关注度低意味着上涨空间未充分发掘"},
+      {id:"LYNCH-B4",name:"两分钟法则",cond:"能在2分钟内说清买入理由",on:false,pri:"必要条件",desc:"说不清为什么买就不应该买，防止冲动交易"},
+    ],
+    sell:[
+      {id:"LYNCH-S1",name:"成长减速卖出",cond:"连续2季盈利增速<15% AND PEG>1.5",on:false,pri:"高",desc:"快速增长股最大卖出信号：增速放缓时估值会剧烈压缩"},
+      {id:"LYNCH-S2",name:"故事变质卖出",cond:"买入时的核心逻辑不再成立",on:false,pri:"高",desc:"买入理由消失就该卖了"},
+      {id:"LYNCH-S3",name:"酒会理论止盈",cond:"当人人都在讨论这只股票时",on:false,pri:"中",desc:"全民热议时市场往往接近顶部"},
+    ],
+  },
+
+  "kelly": {
+    icon:"🎲", name:"凯利公式仓位管理",
+    origin:"约翰·凯利 / 爱德华·索普",
+    color:"--org",
+    tags:[{t:"数学最优",c:"--org"},{t:"仓位计算",c:"--cyan"},{t:"通用叠加",c:"--grn"}],
+    desc:"数学上证明的最优下注比例，长期复合增长最大化。实操中使用半凯利(Half-Kelly)更安全。可叠加在任何选股策略之上，替代固定百分比的仓位管理。",
+    position:[
+      {id:"KELLY-P1",name:"凯利公式计算",cond:"f = (p×b - q) / b，p=胜率, q=1-p, b=盈亏比",on:false,pri:"核心",desc:"例：胜率60%、盈亏比2:1 → 40%理论仓位"},
+      {id:"KELLY-P2",name:"半凯利安全垫",cond:"实际仓位 = kelly × 0.5",on:false,pri:"核心",desc:"牺牲少量收益换取大幅降低破产风险，实操标配"},
+      {id:"KELLY-P3",name:"动态凯利调整",cond:"每月根据近期胜率和盈亏比重算",on:false,pri:"建议",desc:"连续亏损后凯利值自动降低，天然自我保护机制"},
+      {id:"KELLY-P4",name:"多标的归一化",cond:"各标的独立算凯利值，总和≤总仓位上限",on:false,pri:"建议",desc:"多标的时归一化避免总仓位超限"},
+    ],
+  },
+
+  "canslim": {
+    icon:"🚀", name:"欧奈尔CANSLIM",
+    origin:"威廉·欧奈尔 · 《笑傲股市》",
+    color:"--pink",
+    tags:[{t:"高速成长",c:"--pink"},{t:"动量",c:"--red"},{t:"新高突破",c:"--org"}],
+    desc:"七要素选股系统：当季盈利(C)、年度盈利(A)、新产品新高(N)、供给需求(S)、领导者(L)、机构持仓(I)、大盘方向(M)。在牛市中寻找领涨的超级成长股。",
+    buy:[
+      {id:"CAN-B1",name:"C=当季盈利",cond:"当季EPS同比增长 ≥ 25%",on:false,pri:"核心",desc:"最近一季盈利同比增长至少25%，越高越好"},
+      {id:"CAN-B2",name:"A=年度盈利",cond:"3-5年每年EPS增长≥25% AND ROE≥17%",on:false,pri:"核心",desc:"不仅当季好还要持续好，ROE验证盈利质量"},
+      {id:"CAN-B3",name:"N=新高放量突破",cond:"52周新高 OR 突破平台 AND vol>1.4×avg",on:false,pri:"高",desc:"真正大牛股从新高开始，不要抄底"},
+      {id:"CAN-B4",name:"M=大盘方向确认",cond:"大盘处于上升趋势",on:false,pri:"必要条件",desc:"3/4的股票跟随大盘。熊市现金为王"},
+    ],
+    sell:[
+      {id:"CAN-S1",name:"7-8%铁律止损",cond:"pnl_pct ≤ -7%（无条件）",on:false,pri:"最高",desc:"欧奈尔最核心规则。没有例外没有借口"},
+      {id:"CAN-S2",name:"高潮顶部卖出",cond:"巨量长上影 + 收盘回落",on:false,pri:"高",desc:"最后的疯狂：不要贪恋最后一段利润"},
+      {id:"CAN-S3",name:"领导股转弱",cond:"relative_strength < 70",on:false,pri:"中",desc:"板块龙头跑输大盘时减仓"},
+    ],
+  },
+};
+
+// ==============================
+// 状态管理
+// ==============================
+let currentStrategy = null;
+
+function getAllRules(strat) {
+  const s = STRATEGIES[strat];
+  if (!s) return [];
+  return [...(s.buy||[]),...(s.sell||[]),...(s.clear||[]),...(s.hold||[]),...(s.special||[]),...(s.position||[])];
+}
+
+function countActive() {
+  let n = 0;
+  Object.keys(STRATEGIES).forEach(k => getAllRules(k).forEach(r => { if (r.on) n++; }));
+  document.getElementById('activeCount').textContent = n;
+}
+
+// ==============================
+// 渲染
+// ==============================
+function renderSidebar() {
+  const el = document.getElementById('sidebar');
+  el.innerHTML = Object.entries(STRATEGIES).map(([k, s]) => {
+    const active = getAllRules(k).filter(r => r.on).length;
+    const total = getAllRules(k).length;
+    const tags = s.tags.map(t => `<span class="strat-tag" style="background:rgba(255,255,255,.06);color:var(${t.c})">${t.t}</span>`).join('');
+    return `<div class="strat-card${currentStrategy===k?' active':''}" onclick="selectStrategy('${k}')">
+      <div class="strat-icon">${s.icon}</div>
+      <div class="strat-name">${s.name}</div>
+      <div class="strat-origin">${s.origin} · <span style="color:var(--cyan)">${active}/${total}</span>条启用</div>
+      <div class="strat-desc">${s.desc.slice(0,50)}...</div>
+      <div class="strat-tags">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMain(key) {
+  const s = STRATEGIES[key];
+  if (!s) return;
+
+  const el = document.getElementById('main');
+  const tags = s.tags.map(t => `<span class="strat-tag" style="background:rgba(255,255,255,.08);color:var(${t.c});font-size:10px;padding:3px 8px">${t.t}</span>`).join('');
+  const activeN = getAllRules(key).filter(r=>r.on).length;
+  const totalN = getAllRules(key).length;
+
+  let html = `
+    <div class="panel">
+      <div class="strat-header">
+        <div class="icon">${s.icon}</div>
+        <div class="info">
+          <h2>${s.name}</h2>
+          <p>${s.desc}</p>
+          <div style="margin-top:6px;display:flex;gap:4px;align-items:center;flex-wrap:wrap">${tags}
+            <span style="font-size:10px;color:var(--t3);margin-left:8px">${activeN}/${totalN} 条规则已启用</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="toggleAll('${key}',true)" style="font-size:10px;padding:5px 12px">✅ 全部启用</button>
+        <button class="btn btn-outline" onclick="toggleAll('${key}',false)" style="font-size:10px;padding:5px 12px">⬜ 全部关闭</button>
+      </div>
+    </div>
+  `;
+
+  const sections = [
+    {key:'buy', title:'📈 买入规则', cls:'buy'},
+    {key:'sell', title:'📉 卖出/减仓规则', cls:'sell'},
+    {key:'clear', title:'🔴 清仓规则', cls:'clear'},
+    {key:'hold', title:'⏸️ 持有规则', cls:'hold'},
+    {key:'special', title:'⚡ 特殊情境规则', cls:'special'},
+    {key:'position', title:'💼 仓位管理规则', cls:'position'},
+  ];
+
+  sections.forEach(sec => {
+    const rules = s[sec.key];
+    if (!rules || rules.length === 0) return;
+    html += `<div class="rule-section"><span class="rule-section-title ${sec.cls}">${sec.title}</span>`;
+    rules.forEach((r,i) => {
+      const priCls = r.pri === '最高' ? 'pri-highest' : r.pri === '高' ? 'pri-high' : r.pri === '核心' || r.pri === '必要条件' ? 'pri-required' : 'pri-medium';
+      html += `<div class="rule-card">
+        <div class="rule-toggle">
+          <input type="checkbox" id="r_${key}_${sec.key}_${i}" ${r.on?'checked':''} onchange="toggleRule('${key}','${sec.key}',${i},this.checked)">
+          <label for="r_${key}_${sec.key}_${i}"></label>
+        </div>
+        <div class="rule-body">
+          <div class="rule-name">${r.id} · ${r.name}</div>
+          <div class="rule-cond">${r.cond}</div>
+          <div class="rule-desc">${r.desc}</div>
+        </div>
+        ${r.pri ? `<span class="rule-priority ${priCls}">${r.pri}</span>` : ''}
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function selectStrategy(key) {
+  currentStrategy = key;
+  renderSidebar();
+  renderMain(key);
+}
+
+function toggleRule(strat, section, idx, val) {
+  STRATEGIES[strat][section][idx].on = val;
+  countActive();
+  renderSidebar();
+}
+
+function toggleAll(strat, val) {
+  const sections = ['buy','sell','clear','hold','special','position'];
+  sections.forEach(sec => {
+    if (STRATEGIES[strat][sec]) STRATEGIES[strat][sec].forEach(r => r.on = val);
+  });
+  countActive();
+  renderSidebar();
+  renderMain(strat);
+}
+
+// ==============================
+// 策略对比
+// ==============================
+function showCompare() {
+  const modal = document.getElementById('modal');
+  const overlay = document.getElementById('modalOverlay');
+
+  let rows = Object.entries(STRATEGIES).map(([k,s]) => {
+    const all = getAllRules(k);
+    const on = all.filter(r=>r.on);
+    const buyOn = (s.buy||[]).filter(r=>r.on).length;
+    const sellOn = (s.sell||[]).filter(r=>r.on).length;
+    const clearOn = (s.clear||[]).filter(r=>r.on).length;
+    return `<tr>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--bd)">${s.icon} ${s.name}</td>
+      <td style="padding:6px;text-align:center;border-bottom:1px solid var(--bd);color:var(--cyan);font-weight:700">${on.length}/${all.length}</td>
+      <td style="padding:6px;text-align:center;border-bottom:1px solid var(--bd);color:var(--grn)">${buyOn}</td>
+      <td style="padding:6px;text-align:center;border-bottom:1px solid var(--bd);color:var(--red)">${sellOn}</td>
+      <td style="padding:6px;text-align:center;border-bottom:1px solid var(--bd);color:var(--org)">${clearOn}</td>
+    </tr>`;
+  }).join('');
+
+  modal.innerHTML = `<h3>📊 七套策略规则对比</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px">
+    <thead><tr style="background:var(--b3)">
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--bd)">策略</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--bd)">启用/总数</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--bd)">买入</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--bd)">卖出</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--bd)">清仓</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="btn-row"><button class="btn btn-outline" onclick="closeModal()">关闭</button></div>`;
+  overlay.classList.add('show');
+}
+
+// ==============================
+// 导出
+// ==============================
+function exportRules() {
+  // 收集所有启用的规则，按原始格式组装
+  const output = {
+    "_说明": "AI交易助手交易规则 — 由策略配置器生成",
+    "_版本": "2.0",
+    "_最后修改": new Date().toISOString().slice(0,10),
+    "_启用策略": [],
+
+    "交易哲学": { "核心理念": "", "风格": "", "来源策略": [] },
+
+    "买入规则": { "说明": "满足条件时触发买入/加仓信号", "conditions": [] },
+    "卖出规则": { "说明": "满足任一条件时触发卖出/减仓信号", "conditions": [] },
+    "清仓规则": { "说明": "满足任一条件时必须清仓", "conditions": [] },
+    "持有规则": { "说明": "满足条件时维持持仓不动", "conditions": [] },
+    "特殊情境规则": {},
+    "仓位管理规则": { "conditions": [] },
+  };
+
+  const philosophies = [];
+  const stratNames = [];
+
+  Object.entries(STRATEGIES).forEach(([k, s]) => {
+    const hasActive = getAllRules(k).some(r => r.on);
+    if (!hasActive) return;
+
+    stratNames.push(s.name);
+
+    (s.buy||[]).filter(r=>r.on).forEach(r => {
+      output["买入规则"].conditions.push({
+        id: r.id, "名称": r.name, "条件": r.cond,
+        "优先级": r.pri||"", "启用": true,
+        "说明": r.desc, "来源策略": s.name
+      });
+    });
+
+    (s.sell||[]).filter(r=>r.on).forEach(r => {
+      output["卖出规则"].conditions.push({
+        id: r.id, "名称": r.name, "条件": r.cond,
+        "优先级": r.pri||"", "启用": true,
+        "说明": r.desc, "来源策略": s.name
+      });
+    });
+
+    (s.clear||[]).filter(r=>r.on).forEach(r => {
+      output["清仓规则"].conditions.push({
+        id: r.id, "名称": r.name, "条件": r.cond,
+        "优先级": r.pri||"", "启用": true,
+        "说明": r.desc, "来源策略": s.name
+      });
+    });
+
+    (s.hold||[]).filter(r=>r.on).forEach(r => {
+      output["持有规则"].conditions.push({
+        id: r.id, "名称": r.name, "条件": r.cond,
+        "启用": true, "说明": r.desc, "来源策略": s.name
+      });
+    });
+
+    (s.special||[]).filter(r=>r.on).forEach(r => {
+      output["特殊情境规则"][r.name] = {
+        "规则": r.cond, "启用": true, "说明": r.desc, "来源策略": s.name
+      };
+    });
+
+    (s.position||[]).filter(r=>r.on).forEach(r => {
+      output["仓位管理规则"].conditions.push({
+        id: r.id, "名称": r.name, "条件": r.cond,
+        "启用": true, "说明": r.desc, "来源策略": s.name
+      });
+    });
+  });
+
+  output["_启用策略"] = stratNames;
+  output["交易哲学"]["来源策略"] = stratNames;
+  output["交易哲学"]["核心理念"] = stratNames.join(" + ");
+  output["交易哲学"]["风格"] = stratNames.length <= 2 ? "精简聚焦" : "多策略融合";
+
+  const jsonStr = JSON.stringify(output, null, 2);
+
+  const modal = document.getElementById('modal');
+  const overlay = document.getElementById('modalOverlay');
+
+  modal.innerHTML = `<h3>💾 导出交易规则配置</h3>
+    <p style="font-size:11px;color:var(--t2);margin-bottom:10px">
+      共 ${output["买入规则"].conditions.length} 条买入 + ${output["卖出规则"].conditions.length} 条卖出 + ${output["清仓规则"].conditions.length} 条清仓 + ${output["持有规则"].conditions.length} 条持有 + ${output["仓位管理规则"].conditions.length} 条仓位规则<br>
+      来自: ${stratNames.join(' / ')}
+    </p>
+    <pre id="exportJson">${escapeHtml(jsonStr)}</pre>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeModal()">关闭</button>
+      <button class="btn btn-outline" onclick="copyJson()">📋 复制JSON</button>
+      <button class="btn btn-primary" onclick="downloadJson()">⬇️ 下载文件</button>
+    </div>`;
+  overlay.classList.add('show');
+
+  window._exportedJson = jsonStr;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyJson() {
+  navigator.clipboard.writeText(window._exportedJson).then(() => showToast('已复制到剪贴板'));
+}
+
+function downloadJson() {
+  const blob = new Blob([window._exportedJson], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'trading-rules.json';
+  a.click();
+  showToast('trading-rules.json 已下载');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ==============================
+// 初始化
+// ==============================
+renderSidebar();
+countActive();
+selectStrategy('current');
+</script>
+
+</body>
+</html>

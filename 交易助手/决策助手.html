@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI持仓决策助手 v1</title>
+<style>
+:root{--bg:#0a0e17;--c1:#111827;--c2:#1a2332;--c3:#1f2b3d;--bd:#2a3548;--t1:#e5e7eb;--t2:#9ca3af;--t3:#6b7280;
+--blue:#3b82f6;--cyan:#06b6d4;--grn:#10b981;--red:#ef4444;--org:#f59e0b;--purp:#8b5cf6;--pink:#ec4899;--teal:#14b8a6}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;line-height:1.5}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+
+/* Header */
+.hd{background:var(--c1);border-bottom:1px solid var(--bd);padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.hd h1{font-size:18px;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hd .ver{font-size:9px;color:var(--t3);margin-left:6px;vertical-align:super}
+.hd .tm{font-size:10px;color:var(--t3)}
+
+/* Summary bar */
+.summary{display:flex;gap:6px;padding:10px 20px;background:var(--c1);border-bottom:1px solid var(--bd);overflow-x:auto}
+.sm{background:var(--c2);border:1px solid var(--bd);border-radius:8px;padding:8px 14px;text-align:center;min-width:90px}
+.sm .l{font-size:8px;color:var(--t3)}.sm .v{font-size:18px;font-weight:800}.sm .s{font-size:9px;margin-top:1px}
+
+/* Dimension toggles */
+.dims{display:flex;gap:6px;padding:10px 20px;background:rgba(17,24,39,.6);border-bottom:1px solid var(--bd);flex-wrap:wrap;align-items:center}
+.dims-label{font-size:10px;color:var(--t3);margin-right:4px}
+.dim-btn{padding:5px 12px;border-radius:16px;border:1px solid var(--bd);background:var(--c2);cursor:pointer;font-size:11px;color:var(--t2);transition:.2s;user-select:none;display:flex;align-items:center;gap:4px}
+.dim-btn:hover{border-color:var(--blue)}
+.dim-btn.on{border-color:var(--cyan);color:var(--cyan);background:rgba(6,182,212,.08)}
+.dim-btn .dot{width:6px;height:6px;border-radius:50%;background:var(--bd);transition:.2s}
+.dim-btn.on .dot{background:var(--cyan)}
+.dim-weight{font-size:9px;color:var(--t3);margin-left:2px}
+
+/* Macro panel */
+.macro-panel{background:var(--c1);border-bottom:1px solid var(--bd);overflow:hidden;transition:max-height .3s}
+.macro-toggle{padding:8px 20px;cursor:pointer;font-size:12px;color:var(--t2);display:flex;justify-content:space-between;align-items:center}
+.macro-toggle:hover{color:var(--t1)}
+.macro-body{padding:0 20px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px}
+.mc{background:var(--c2);border:1px solid var(--bd);border-radius:8px;padding:8px;text-align:center}
+.mc .l{font-size:8px;color:var(--t3)}.mc .v{font-size:17px;font-weight:800}.mc .s{font-size:9px;margin-top:1px}
+.up{color:var(--grn)}.dn{color:var(--red)}.neu{color:var(--org)}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;padding:10px 20px;background:var(--bg);position:sticky;top:52px;z-index:90}
+.tab{padding:7px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--c2);cursor:pointer;font-size:12px;color:var(--t2);transition:.15s;display:flex;align-items:center;gap:6px}
+.tab:hover{border-color:var(--blue)}.tab.on{border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.08)}
+.tab .cnt{background:var(--bd);padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.tab.on .cnt{background:rgba(59,130,246,.2);color:var(--blue)}
+
+/* Content */
+.wrap{max-width:960px;margin:0 auto;padding:12px 16px}
+
+/* Action card */
+.acard{background:var(--c2);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;animation:fi .25s ease}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+.acard-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+.acard-info h3{font-size:16px;font-weight:700}
+.acard-info .sym{font-size:10px;color:var(--t3);margin-left:4px}
+.acard-info .mkt{font-size:9px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600}
+.mkt-us{background:rgba(59,130,246,.12);color:var(--blue)}
+.mkt-hk{background:rgba(236,72,153,.12);color:var(--pink)}
+.mkt-a{background:rgba(245,158,11,.12);color:var(--org)}
+.badge{font-size:11px;font-weight:700;padding:4px 12px;border-radius:8px;white-space:nowrap}
+.badge-strong-buy{background:rgba(16,185,129,.18);color:var(--grn);border:1px solid rgba(16,185,129,.3);font-weight:800}
+.badge-buy{background:rgba(16,185,129,.12);color:var(--grn);border:1px solid rgba(16,185,129,.2)}
+.badge-neutral{background:rgba(6,182,212,.1);color:var(--cyan);border:1px solid rgba(6,182,212,.2)}
+.badge-reduce{background:rgba(245,158,11,.12);color:var(--org);border:1px solid rgba(245,158,11,.2)}
+.badge-strong-reduce{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.25);font-weight:800}
+.badge-clear{background:rgba(239,68,68,.22);color:var(--red);border:1px solid rgba(239,68,68,.4);font-weight:800}
+.badge-urgent{font-size:9px;padding:2px 8px;border-radius:4px;margin-left:6px}
+.urg-high{background:rgba(239,68,68,.15);color:var(--red)}
+.urg-mid{background:rgba(245,158,11,.15);color:var(--org)}
+.urg-low{background:rgba(59,130,246,.15);color:var(--blue)}
+
+/* Position row */
+.pos-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pos-item{background:rgba(255,255,255,.02);padding:6px 10px;border-radius:6px;font-size:11px}
+.pos-item .l{font-size:8px;color:var(--t3)}.pos-item .v{font-weight:700}
+
+/* Dimension scores */
+.dim-scores{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.dscore{flex:1;min-width:80px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:8px;text-align:center}
+.dscore .l{font-size:9px;color:var(--t3);margin-bottom:2px}.dscore .v{font-size:20px;font-weight:800}
+.dscore .bar{height:3px;border-radius:2px;background:var(--bd);margin-top:4px;overflow:hidden}
+.dscore .bar-fill{height:100%;border-radius:2px;transition:width .3s}
+.dscore.off{opacity:.25}
+
+/* Reasons */
+.reasons{font-size:11px;color:var(--t2);line-height:1.7;padding:10px 12px;background:rgba(255,255,255,.02);border-radius:8px;border-left:3px solid var(--blue)}
+.reasons b{color:var(--t1);font-size:10px}
+.reason-tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:4px;margin-right:4px;font-weight:600}
+.rt-pos{background:rgba(16,185,129,.1);color:var(--grn)}
+.rt-neg{background:rgba(239,68,68,.1);color:var(--red)}
+.rt-neu{background:rgba(245,158,11,.1);color:var(--org)}
+.rt-info{background:rgba(59,130,246,.1);color:var(--blue)}
+
+/* Detail expand */
+.detail-toggle{font-size:10px;color:var(--t3);cursor:pointer;margin-top:8px;text-align:right}
+.detail-toggle:hover{color:var(--cyan)}
+.detail-body{display:none;margin-top:8px;font-size:10px;color:var(--t2);padding:10px;background:rgba(0,0,0,.15);border-radius:8px}
+.detail-body.show{display:block}
+.detail-section{margin-bottom:8px}
+.detail-section .dt{font-size:9px;color:var(--t3);font-weight:700;margin-bottom:3px}
+.detail-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+
+/* Compact table for "other" tab */
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{text-align:left;padding:8px 10px;color:var(--t3);font-size:9px;font-weight:600;border-bottom:1px solid var(--bd);position:sticky;top:92px;background:var(--bg)}
+.tbl td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.03)}
+.tbl tr:hover td{background:rgba(255,255,255,.02)}
+.tbl .sc{font-weight:700;font-size:12px}
+
+/* Composite score big */
+.comp{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.comp-score{font-size:28px;font-weight:900;min-width:48px;text-align:center}
+.comp-label{font-size:10px;color:var(--t3)}
+.comp-action{font-size:13px;font-weight:700}
+
+/* Empty */
+.empty{text-align:center;padding:40px;color:var(--t3);font-size:12px}
+
+/* Footer */
+.footer{text-align:center;padding:14px;color:var(--t3);font-size:8px;border-top:1px solid var(--bd);margin-top:20px}
+
+/* Strategy detail grid */
+.strat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.strat-mini{padding:6px;background:rgba(255,255,255,.02);border-radius:6px;text-align:center}
+.strat-mini .sn{font-size:9px;color:var(--t3)}.strat-mini .sv{font-size:13px;font-weight:700}
+.strat-mini .sa{font-size:9px;font-weight:600;margin-top:2px}
+
+@media(max-width:640px){.pos-row{flex-direction:column}.dim-scores{flex-direction:column}.strat-grid{grid-template-columns:repeat(2,1fr)}.macro-body{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div><h1>AI持仓决策助手<span class="ver">v1</span></h1><div class="tm" id="clock"></div></div>
+  <div style="font-size:10px;color:var(--t3)">多维分析 · 智能决策</div>
+</div>
+<div class="summary" id="summary"></div>
+<div class="dims" id="dims"></div>
+<div class="macro-panel" id="macroPanel">
+  <div class="macro-toggle" id="macroToggle">🌍 宏观环境 <span id="macroArrow">▾</span></div>
+  <div class="macro-body" id="macroBody"></div>
+</div>
+<div class="tabs" id="tabs"></div>
+<div class="wrap" id="content"></div>
+<div class="footer" id="footer"></div>
+
+<script>
+// ============================================================
+// 配置
+// ============================================================
+const DIMS = [
+  {id:"macro", icon:"🌍", name:"宏观环境", weight:15, on:true},
+  {id:"capital", icon:"💰", name:"资金异动", weight:25, on:true},
+  {id:"tech", icon:"📈", name:"技术面", weight:25, on:true},
+  {id:"news", icon:"📰", name:"消息/机构", weight:15, on:true},
+  {id:"strategy", icon:"🎯", name:"策略模型", weight:20, on:true},
+];
+let curTab = "action"; // action | other
+let macroOpen = true;
+
+// ============================================================
+// 宏观数据
+// ============================================================
+const MAC = {
+  vix:16.8, us10y:4.25, dxy:103.5, cny:7.24,
+  sp500:5820, sp500Chg:0.85, ndx:20850, ndxChg:1.12,
+  hsi:23650, hsiChg:-0.32, sse:3380, sseChg:0.45,
+  fearGreed:62, northbound:45.8, margin_balance:1.82,
+  quadrant:"g" // g=金发女孩 o=过热 r=衰退 s=滞胀
+};
+const QN={g:"金发女孩",o:"过热",r:"衰退",s:"滞胀"};
+const Q=MAC.quadrant;
+
+// ============================================================
+// 持仓数据（后续替换为长桥API）
+// ============================================================
+const H = [
+  {sym:"AAPL.US",n:"苹果",mk:"美股",sec:"科技",qty:200,cost:165,p:178.5,
+   pe:28.5,peg:1.2,roe:147,eps_g:18,eps_qg:22,debt:0.32,
+   ma20:true,ma60:true,macd:"金叉",rsi:55,vol_r:1.1,sup:170,res:188,h52:199.6,l10:172.5,h20:180.2,
+   north:"流入",inst_flow:"增持",big_order:"净买入",unusual:false,
+   news:[{t:"Vision Pro 2 量产加速",s:1},{t:"服务营收再创新高",s:1}],
+   inst:[{f:"高盛",r:"买入",tp:210},{f:"摩根士丹利",r:"增持",tp:200}],
+   signals:["MACD金叉","均线多头排列"],risks:[]},
+
+  {sym:"NVDA.US",n:"英伟达",mk:"美股",sec:"半导体",qty:100,cost:95,p:125.3,
+   pe:65,peg:0.9,roe:115,eps_g:70,eps_qg:85,debt:0.25,
+   ma20:true,ma60:true,macd:"多头",rsi:62,vol_r:1.4,sup:110,res:140,h52:140,l10:118,h20:128,
+   north:"N/A",inst_flow:"增持",big_order:"大额净买入",unusual:true,
+   news:[{t:"Blackwell架构出货量超预期",s:1},{t:"数据中心收入同比+150%",s:1},{t:"估值争议持续",s:-1}],
+   inst:[{f:"花旗",r:"买入",tp:160},{f:"美银",r:"买入",tp:155}],
+   signals:["AI算力龙头","量能放大"],risks:["估值高位"]},
+
+  {sym:"TSLA.US",n:"特斯拉",mk:"美股",sec:"新能源车",qty:50,cost:195,p:178.5,
+   pe:58,peg:3.2,roe:20,eps_g:10,eps_qg:5,debt:0.15,
+   ma20:false,ma60:false,macd:"死叉",rsi:38,vol_r:1.6,sup:160,res:200,h52:280,l10:172,h20:195,
+   north:"N/A",inst_flow:"减持",big_order:"净卖出",unusual:true,
+   news:[{t:"Q1交付量不及预期",s:-1},{t:"Robotaxi推迟至Q3",s:-1},{t:"FSD v13获好评",s:1}],
+   inst:[{f:"摩根",r:"减持",tp:155},{f:"Bernstein",r:"卖出",tp:135}],
+   signals:["放量下跌"],risks:["MACD死叉","双均线下方","机构下调评级","交付增速放缓"]},
+
+  {sym:"MSFT.US",n:"微软",mk:"美股",sec:"科技",qty:80,cost:380,p:425.8,
+   pe:35.2,peg:1.5,roe:39,eps_g:22,eps_qg:28,debt:0.28,
+   ma20:true,ma60:true,macd:"多头",rsi:52,vol_r:0.9,sup:410,res:445,h52:445,l10:415,h20:430,
+   north:"N/A",inst_flow:"增持",big_order:"中性",unusual:false,
+   news:[{t:"Azure市场份额提升",s:1},{t:"Copilot企业版收入超预期",s:1}],
+   inst:[{f:"高盛",r:"买入",tp:480},{f:"瑞银",r:"买入",tp:470}],
+   signals:["云业务强劲","AI Copilot加速"],risks:[]},
+
+  {sym:"GOOGL.US",n:"谷歌",mk:"美股",sec:"科技",qty:120,cost:160,p:175.2,
+   pe:24,peg:1.1,roe:28,eps_g:20,eps_qg:18,debt:0.12,
+   ma20:true,ma60:false,macd:"弱多",rsi:48,vol_r:0.8,sup:165,res:185,h52:185,l10:170,h20:178,
+   north:"N/A",inst_flow:"中性",big_order:"中性",unusual:false,
+   news:[{t:"Gemini 2.5 Pro 发布",s:1},{t:"反垄断判决待定",s:-1}],
+   inst:[{f:"巴克莱",r:"增持",tp:195},{f:"Jefferies",r:"持有",tp:180}],
+   signals:["Gemini迭代"],risks:["反垄断风险"]},
+
+  {sym:"700.HK",n:"腾讯控股",mk:"港股",sec:"科技",qty:500,cost:350,p:385.6,
+   pe:22,peg:0.95,roe:22,eps_g:20,eps_qg:24,debt:0.30,
+   ma20:true,ma60:true,macd:"多头",rsi:58,vol_r:1.3,sup:370,res:405,h52:405,l10:375,h20:392,
+   north:"流入",inst_flow:"增持",big_order:"净买入",unusual:false,
+   news:[{t:"微信小店GMV翻倍",s:1},{t:"游戏版号获批",s:1}],
+   inst:[{f:"汇丰",r:"买入",tp:440},{f:"中金",r:"买入",tp:430}],
+   signals:["MACD多头","放量上涨","量价配合好"],risks:[]},
+
+  {sym:"9988.HK",n:"阿里巴巴",mk:"港股",sec:"科技",qty:1000,cost:105,p:92.5,
+   pe:12,peg:0.6,roe:12,eps_g:15,eps_qg:12,debt:0.20,
+   ma20:false,ma60:false,macd:"弱空",rsi:42,vol_r:0.7,sup:85,res:100,h52:120,l10:88,h20:98,
+   north:"流入",inst_flow:"中性",big_order:"小额净卖出",unusual:false,
+   news:[{t:"通义千问开源模型领先",s:1},{t:"电商GMV增速放缓",s:-1}],
+   inst:[{f:"摩根",r:"增持",tp:120},{f:"高盛",r:"中性",tp:100}],
+   signals:["估值历史低位","回购加大"],risks:["电商竞争激烈","均线空头"]},
+
+  {sym:"9618.HK",n:"京东",mk:"港股",sec:"电商",qty:600,cost:135,p:148.5,
+   pe:14,peg:0.8,roe:15,eps_g:16,eps_qg:18,debt:0.18,
+   ma20:true,ma60:false,macd:"弱多",rsi:50,vol_r:0.9,sup:135,res:160,h52:165,l10:142,h20:152,
+   north:"流入",inst_flow:"增持",big_order:"中性",unusual:false,
+   news:[{t:"物流利润率持续改善",s:1},{t:"即时零售增长强劲",s:1}],
+   inst:[{f:"中信",r:"买入",tp:170},{f:"瑞银",r:"增持",tp:165}],
+   signals:["物流效率提升","利润率改善"],risks:[]},
+
+  {sym:"3690.HK",n:"美团",mk:"港股",sec:"本地生活",qty:400,cost:140,p:158.2,
+   pe:35,peg:1.4,roe:10,eps_g:22,eps_qg:28,debt:0.22,
+   ma20:true,ma60:true,macd:"金叉",rsi:56,vol_r:1.2,sup:145,res:170,h52:178,l10:150,h20:162,
+   north:"流入",inst_flow:"增持",big_order:"净买入",unusual:false,
+   news:[{t:"海外业务Keeta扩张顺利",s:1},{t:"即时配送护城河加深",s:1}],
+   inst:[{f:"摩根",r:"增持",tp:180},{f:"高盛",r:"买入",tp:185}],
+   signals:["MACD金叉","外卖龙头"],risks:[]},
+
+  {sym:"600519.SH",n:"贵州茅台",mk:"A股",sec:"消费",qty:10,cost:1680,p:1580,
+   pe:25,peg:1.8,roe:33,eps_g:12,eps_qg:8,debt:0.05,
+   ma20:false,ma60:false,macd:"空头",rsi:38,vol_r:0.6,sup:1520,res:1650,h52:1850,l10:1560,h20:1620,
+   north:"流出",inst_flow:"减持",big_order:"净卖出",unusual:true,
+   news:[{t:"批价回落至2700元区间",s:-1},{t:"库存消化周期拉长",s:-1}],
+   inst:[{f:"中信",r:"持有",tp:1650},{f:"招商",r:"持有",tp:1600}],
+   signals:["RSI接近超卖"],risks:["消费恢复慢","库存偏高","MACD空头","北向流出"]},
+
+  {sym:"300750.SZ",n:"宁德时代",mk:"A股",sec:"新能源",qty:100,cost:200,p:218.5,
+   pe:22,peg:0.85,roe:20,eps_g:25,eps_qg:30,debt:0.35,
+   ma20:true,ma60:true,macd:"金叉",rsi:55,vol_r:1.2,sup:200,res:240,h52:260,l10:210,h20:225,
+   north:"流入",inst_flow:"增持",big_order:"净买入",unusual:false,
+   news:[{t:"固态电池中试线投产",s:1},{t:"北美工厂获补贴确认",s:1}],
+   inst:[{f:"中金",r:"买入",tp:280},{f:"国泰君安",r:"增持",tp:260}],
+   signals:["MACD金叉","全球电池份额第一","固态电池进展"],risks:["产能过剩隐忧"]},
+
+  {sym:"601318.SH",n:"中国平安",mk:"A股",sec:"金融",qty:500,cost:48,p:52.8,
+   pe:8,peg:0.5,roe:16,eps_g:12,eps_qg:10,debt:0.82,
+   ma20:false,ma60:false,macd:"弱空",rsi:44,vol_r:0.8,sup:48,res:58,h52:62,l10:51,h20:55,
+   north:"中性",inst_flow:"中性",big_order:"中性",unusual:false,
+   news:[{t:"寿险NBV增速回暖",s:1},{t:"地产敞口持续收缩",s:1}],
+   inst:[{f:"中信",r:"买入",tp:62},{f:"高盛",r:"中性",tp:55}],
+   signals:["低估值修复"],risks:["地产风险敞口"]},
+
+  {sym:"000858.SZ",n:"五粮液",mk:"A股",sec:"消费",qty:200,cost:135,p:128.5,
+   pe:18,peg:1.2,roe:25,eps_g:13,eps_qg:10,debt:0.08,
+   ma20:false,ma60:false,macd:"弱空",rsi:42,vol_r:0.7,sup:120,res:140,h52:168,l10:125,h20:135,
+   north:"中性",inst_flow:"减持",big_order:"小额净卖出",unusual:false,
+   news:[{t:"白酒去库存周期或接近尾声",s:0},{t:"电商渠道价格下行",s:-1}],
+   inst:[{f:"招商",r:"持有",tp:140},{f:"中信",r:"持有",tp:135}],
+   signals:["估值中低位"],risks:["白酒去库存","消费疲软"]},
+
+  {sym:"002594.SZ",n:"比亚迪",mk:"A股",sec:"新能源车",qty:80,cost:240,p:285.5,
+   pe:20,peg:0.7,roe:18,eps_g:30,eps_qg:35,debt:0.45,
+   ma20:true,ma60:true,macd:"多头",rsi:60,vol_r:1.3,sup:265,res:300,h52:310,l10:272,h20:290,
+   north:"流入",inst_flow:"增持",big_order:"净买入",unusual:true,
+   news:[{t:"3月销量同比+45%",s:1},{t:"第五代DM-i发布",s:1},{t:"海外市场突破",s:1}],
+   inst:[{f:"中金",r:"买入",tp:340},{f:"国泰君安",r:"买入",tp:330}],
+   signals:["多头趋势","放量上攻","销量超预期"],risks:[]},
+
+  {sym:"600036.SH",n:"招商银行",mk:"A股",sec:"金融",qty:300,cost:32,p:35.8,
+   pe:6,peg:0.4,roe:16,eps_g:8,eps_qg:6,debt:0.92,
+   ma20:true,ma60:false,macd:"弱多",rsi:50,vol_r:0.9,sup:33,res:38,h52:40,l10:34.5,h20:36.5,
+   north:"流入",inst_flow:"中性",big_order:"中性",unusual:false,
+   news:[{t:"零售AUM突破14万亿",s:1},{t:"净息差企稳",s:0}],
+   inst:[{f:"中信",r:"买入",tp:42},{f:"汇丰",r:"增持",tp:40}],
+   signals:["零售银行龙头","估值低位"],risks:["息差压力"]},
+];
+
+// ============================================================
+// 分析引擎
+// ============================================================
+
+// 1. 宏观评分（对每只股票的行业相关性）
+function scoreMacro(d){
+  let s=5, reasons=[];
+  // 象限基础分
+  if(Q==="g"){s+=2;reasons.push({t:"pos",x:`宏观处于${QN[Q]}，权益友好`})}
+  else if(Q==="o"){s+=0.5;reasons.push({t:"neu",x:`${QN[Q]}环境，关注通胀`})}
+  else if(Q==="r"){s-=1.5;reasons.push({t:"neg",x:`${QN[Q]}环境，防御为主`})}
+  else{s-=2.5;reasons.push({t:"neg",x:`${QN[Q]}环境，大幅降仓`})}
+  // VIX
+  if(MAC.vix<15){s+=0.5;reasons.push({t:"pos",x:`VIX=${MAC.vix}，市场平静`})}
+  else if(MAC.vix>25){s-=1;reasons.push({t:"neg",x:`VIX=${MAC.vix}，波动加大`})}
+  // 行业相关
+  if(d.sec==="科技"&&MAC.ndxChg>0){s+=0.5;reasons.push({t:"pos",x:`纳指+${MAC.ndxChg}%利好科技`})}
+  if(d.sec==="消费"&&Q!=="g"){s-=0.5;reasons.push({t:"neg",x:"非金发女孩象限不利消费"})}
+  if(d.mk==="港股"&&MAC.northbound>0){s+=0.3;reasons.push({t:"pos",x:`北向净流入${MAC.northbound}亿`})}
+  if(d.mk==="A股"&&MAC.sseChg>0){s+=0.3}
+  s=Math.max(0,Math.min(10,s));
+  return {score:+s.toFixed(1), reasons};
+}
+
+// 2. 资金异动评分
+function scoreCapital(d){
+  let s=5, reasons=[];
+  // 北向
+  if(d.north==="流入"){s+=1.2;reasons.push({t:"pos",x:"北向资金流入"})}
+  else if(d.north==="流出"){s-=1.2;reasons.push({t:"neg",x:"北向资金流出"})}
+  // 机构
+  if(d.inst_flow==="增持"){s+=1.5;reasons.push({t:"pos",x:"机构资金增持"})}
+  else if(d.inst_flow==="减持"){s-=1.5;reasons.push({t:"neg",x:"机构资金减持"})}
+  // 大单
+  if(d.big_order==="大额净买入"){s+=1.2;reasons.push({t:"pos",x:"大单资金净买入"})}
+  else if(d.big_order==="净买入"){s+=0.6;reasons.push({t:"pos",x:"大单小幅净买入"})}
+  else if(d.big_order==="净卖出"){s-=1;reasons.push({t:"neg",x:"大单资金净卖出"})}
+  // 量比
+  if(d.vol_r>=1.5){s+=0.8;reasons.push({t:"neu",x:`量比${d.vol_r}，显著放量`})}
+  else if(d.vol_r>=1.1){s+=0.3;reasons.push({t:"pos",x:`量比${d.vol_r}，温和放量`})}
+  else if(d.vol_r<=0.6){s-=0.5;reasons.push({t:"neg",x:`量比${d.vol_r}，明显缩量`})}
+  // 异动
+  if(d.unusual){reasons.push({t:"neu",x:"⚡ 检测到异常资金活动"})}
+  s=Math.max(0,Math.min(10,s));
+  return {score:+s.toFixed(1), reasons};
+}
+
+// 3. 技术面评分
+function scoreTech(d){
+  let s=5, reasons=[];
+  // 均线
+  if(d.ma20&&d.ma60){s+=1.5;reasons.push({t:"pos",x:"双均线多头排列"})}
+  else if(d.ma20){s+=0.5;reasons.push({t:"pos",x:"MA20上方，MA60下方"})}
+  else if(!d.ma20&&!d.ma60){s-=1.5;reasons.push({t:"neg",x:"双均线空头排列"})}
+  // MACD
+  if(d.macd.includes("金叉")){s+=1;reasons.push({t:"pos",x:`MACD${d.macd}`})}
+  else if(d.macd==="多头"){s+=0.8;reasons.push({t:"pos",x:"MACD多头运行"})}
+  else if(d.macd.includes("死叉")){s-=1.5;reasons.push({t:"neg",x:`MACD${d.macd}`})}
+  else if(d.macd.includes("空")){s-=0.8;reasons.push({t:"neg",x:`MACD${d.macd}`})}
+  // RSI
+  if(d.rsi>70){s-=0.5;reasons.push({t:"neg",x:`RSI=${d.rsi}，超买`})}
+  else if(d.rsi<30){s-=0.5;reasons.push({t:"neg",x:`RSI=${d.rsi}，超卖`})}
+  else if(d.rsi>=50&&d.rsi<=65){s+=0.5;reasons.push({t:"pos",x:`RSI=${d.rsi}，偏多`})}
+  else{reasons.push({t:"info",x:`RSI=${d.rsi}`})}
+  // 支撑/阻力
+  const distSup=(d.p-d.sup)/d.sup*100;
+  if(distSup<2){reasons.push({t:"neu",x:`接近支撑位${d.sup}(${distSup.toFixed(1)}%)`})}
+  const distRes=(d.res-d.p)/d.p*100;
+  if(distRes<3){s+=0.3;reasons.push({t:"info",x:`接近阻力位${d.res}`})}
+  // 52周高点距离
+  const from52=(d.h52-d.p)/d.h52*100;
+  if(from52<5){s+=0.3;reasons.push({t:"pos",x:"接近52周高点"})}
+  else if(from52>30){s-=0.3;reasons.push({t:"neg",x:`距52周高点-${from52.toFixed(0)}%`})}
+  s=Math.max(0,Math.min(10,s));
+  return {score:+s.toFixed(1), reasons};
+}
+
+// 4. 消息/机构评分
+function scoreNews(d){
+  let s=5, reasons=[];
+  // 新闻情绪
+  const posCnt=d.news.filter(n=>n.s>0).length, negCnt=d.news.filter(n=>n.s<0).length;
+  if(posCnt>negCnt){s+=(posCnt-negCnt)*0.6;reasons.push({t:"pos",x:`近期${posCnt}条利好消息`})}
+  else if(negCnt>posCnt){s-=(negCnt-posCnt)*0.8;reasons.push({t:"neg",x:`近期${negCnt}条利空消息`})}
+  d.news.forEach(n=>{reasons.push({t:n.s>0?"pos":n.s<0?"neg":"neu",x:n.t})});
+  // 机构评级
+  const buyR=d.inst.filter(i=>i.r==="买入"||i.r==="增持").length;
+  const sellR=d.inst.filter(i=>i.r==="卖出"||i.r==="减持").length;
+  if(buyR>0){s+=buyR*0.5;reasons.push({t:"pos",x:`${buyR}家机构看多`})}
+  if(sellR>0){s-=sellR*0.8;reasons.push({t:"neg",x:`${sellR}家机构看空`})}
+  // 目标价
+  const avgTp=d.inst.reduce((a,i)=>a+i.tp,0)/d.inst.length;
+  const upside=((avgTp-d.p)/d.p*100).toFixed(1);
+  if(upside>10){s+=0.5;reasons.push({t:"pos",x:`机构目标均价${avgTp.toFixed(0)}，上行空间${upside}%`})}
+  else if(upside<0){s-=0.5;reasons.push({t:"neg",x:`机构目标均价${avgTp.toFixed(0)}，下行${upside}%`})}
+  s=Math.max(0,Math.min(10,s));
+  return {score:+s.toFixed(1), reasons};
+}
+
+// 5. 策略模型评分（6大模型共识）
+function scoreStrategy(d){
+  let reasons=[];
+  // 基本面辅助
+  function calcFund(d){
+    let s=5;
+    if(d.roe>=20)s+=1.5;else if(d.roe>=15)s+=1;else if(d.roe>=10)s+=0.5;
+    if(d.eps_g>=25)s+=1.5;else if(d.eps_g>=15)s+=1;else if(d.eps_g>=5)s+=0.3;
+    if(d.peg<=0.5)s+=1;else if(d.peg<=1)s+=0.5;else if(d.peg>2.5)s-=1;
+    if(d.debt<0.3)s+=0.3;else if(d.debt>0.7)s-=0.5;
+    return Math.max(0,Math.min(10,s));
+  }
+  const fund=calcFund(d);
+  const models=[
+    {id:"db",icon:"🎯",name:"达里奥+巴菲特",fn(){
+      let sc=5;
+      if(fund>=7)sc+=1.5; if(d.peg<=1.2)sc+=1; if(d.ma20)sc+=0.5; if(fund<5)sc-=2; if(d.peg>2)sc-=1.5; if(Q==="s")sc-=1;
+      const act=sc>=7?"买入":sc>=5.5?"持有":sc>=4?"减仓":"卖出";
+      return {score:Math.max(0,Math.min(10,+sc.toFixed(1))),action:act}}},
+    {id:"turtle",icon:"🐢",name:"海龟交易",fn(){
+      let sc=5;
+      if(d.p>d.h20*0.99)sc+=2; if(d.ma20)sc+=1; if(d.vol_r>=1)sc+=0.5; if(d.p<d.l10)sc-=2; if(!d.ma20&&!d.ma60)sc-=1.5;
+      const act=sc>=7?"买入":sc>=5?"持有":sc>=3.5?"减仓":"卖出";
+      return {score:Math.max(0,Math.min(10,+sc.toFixed(1))),action:act}}},
+    {id:"liver",icon:"📊",name:"利弗莫尔",fn(){
+      let sc=5;
+      if(d.vol_r>=1.3)sc+=1.5; if(d.p>d.h20*0.97)sc+=1; if(d.p<d.sup*1.01&&d.vol_r>1.2)sc-=2;
+      if(d.rsi>80&&d.vol_r>2)sc-=1.5;
+      const act=sc>=7?"买入":sc>=5?"持有":sc>=3.5?"减仓":"卖出";
+      return {score:Math.max(0,Math.min(10,+sc.toFixed(1))),action:act}}},
+    {id:"soros",icon:"🌊",name:"索罗斯反身性",fn(){
+      let sc=5;
+      if(d.ma20&&d.vol_r>=1.1&&(d.north==="流入"||d.north==="N/A"))sc+=2;
+      if(MAC.fearGreed<25&&fund>=6)sc+=1.5; if(d.rsi<35&&d.north==="流入")sc+=1;
+      if(d.peg>2.5&&d.rsi>70)sc-=2; if(!d.ma20&&!d.ma60&&d.vol_r>1.5)sc-=2;
+      const act=sc>=7?"买入":sc>=5?"持有":sc>=3.5?"减仓":"卖出";
+      return {score:Math.max(0,Math.min(10,+sc.toFixed(1))),action:act}}},
+    {id:"lynch",icon:"📈",name:"林奇GARP",fn(){
+      let sc=5;
+      if(d.peg<=1)sc+=2; if(d.eps_g>=15)sc+=1; if(d.roe>=17)sc+=0.5;
+      if(d.eps_g<15&&d.peg>1.5)sc-=1.5; if(d.peg>2)sc-=1; if(d.eps_qg<0)sc-=2;
+      const act=sc>=7?"买入":sc>=5?"持有":sc>=3.5?"减仓":"卖出";
+      return {score:Math.max(0,Math.min(10,+sc.toFixed(1))),action:act}}},
+    {id:"can",icon:"🚀",name:"CANSLIM",fn(){
+      let sc=5;
+      if(d.eps_qg>=25)sc+=1.5; if(d.eps_g>=25&&d.roe>=17)sc+=1; if(d.vol_r>=1.4)sc+=0.5;
+      if(Q==="g"||Q==="o")sc+=0.5; else sc-=1.5; if(d.rsi>70)sc-=0.5;
+      const act=sc>=7?"买入":sc>=5?"持有":sc>=3.5?"减仓":"卖出";
+      return {score:Math.max(0,Math.min(10,+sc.toFixed(1))),action:act}}},
+  ];
+  const results=models.map(m=>({...m,...m.fn()}));
+  const avg=results.reduce((a,r)=>a+r.score,0)/results.length;
+  const buyCnt=results.filter(r=>r.action==="买入").length;
+  const sellCnt=results.filter(r=>r.action==="卖出"||r.action==="减仓").length;
+  if(buyCnt>=4)reasons.push({t:"pos",x:`${buyCnt}/6模型看多`});
+  else if(buyCnt>=2)reasons.push({t:"pos",x:`${buyCnt}/6模型看多`});
+  if(sellCnt>=3)reasons.push({t:"neg",x:`${sellCnt}/6模型看空`});
+  else if(sellCnt>=1)reasons.push({t:"neu",x:`${sellCnt}/6模型看空`});
+  reasons.push({t:"info",x:`基本面评分${fund.toFixed(1)} | PEG=${d.peg} | ROE=${d.roe}%`});
+  return {score:+avg.toFixed(1), reasons, models:results};
+}
+
+// ============================================================
+// 综合评分 & 六级决策引擎
+// ============================================================
+// 评级体系:
+//   强烈买入 (strong-buy)  — 多维共振看多 + 无重大风险
+//   买入     (buy)         — 多数维度偏多 + 风险可控
+//   中性     (neutral)     — 多空交织或信号不足
+//   考虑减仓 (reduce)      — 多数维度偏空或出现预警
+//   强烈减仓 (strong-reduce)— 多维共振看空 + 持仓亏损
+//   清仓     (clear)       — 极端风险或基本面崩塌
+//
+// 决策逻辑分三层:
+//   Layer 1: 加权综合分 → 初步评级
+//   Layer 2: 多维交叉验证 → 调整评级（共振增强/背离降级）
+//   Layer 3: 风控覆盖 → 止损/黑天鹅强制覆盖
+
+function analyze(d){
+  const dims={
+    macro:scoreMacro(d), capital:scoreCapital(d), tech:scoreTech(d),
+    news:scoreNews(d), strategy:scoreStrategy(d)
+  };
+
+  // === 盈亏 ===
+  const pnl=(d.p-d.cost)*d.qty;
+  const pnlPct=((d.p-d.cost)/d.cost*100);
+
+  // === Layer 1: 加权综合分 ===
+  let totalW=0, totalS=0;
+  DIMS.forEach(dm=>{
+    if(!dm.on)return;
+    totalW+=dm.weight; totalS+=dims[dm.id].score*dm.weight;
+  });
+  const composite=totalW>0?totalS/totalW:5;
+
+  // 初步评级（纯分数线）
+  let level; // 0=清仓 1=强烈减仓 2=考虑减仓 3=中性 4=买入 5=强烈买入
+  if(composite>=8) level=5;
+  else if(composite>=6.8) level=4;
+  else if(composite>=5.2) level=3;
+  else if(composite>=4) level=2;
+  else if(composite>=2.5) level=1;
+  else level=0;
+
+  const chain=[]; // 推理链
+  chain.push({step:"基础评分",detail:`五维加权综合 = ${composite.toFixed(1)}/10`,result:["清仓","强烈减仓","考虑减仓","中性","买入","强烈买入"][level]});
+
+  // === Layer 2: 多维交叉验证 ===
+  const enabled=DIMS.filter(dm=>dm.on);
+  const scores=enabled.map(dm=>({id:dm.id,name:dm.name,score:dims[dm.id].score}));
+  const bullish=scores.filter(s=>s.score>=7);     // 看多维度
+  const bearish=scores.filter(s=>s.score<=3.5);    // 看空维度
+  const critical=scores.filter(s=>s.score<=2);     // 危险维度
+
+  // 规则2a: 多维共振增强 — ≥3个维度同方向时升/降一级
+  if(bullish.length>=3&&level>=3&&level<5){
+    level+=1;
+    chain.push({step:"多头共振",detail:`${bullish.map(s=>s.name+s.score).join("、")} 均≥7分，${bullish.length}维看多共振`,result:"↑ 升一级"});
+  }
+  if(bearish.length>=3&&level<=3&&level>0){
+    level-=1;
+    chain.push({step:"空头共振",detail:`${bearish.map(s=>s.name+s.score).join("、")} 均≤3.5分，${bearish.length}维看空共振`,result:"↓ 降一级"});
+  }
+
+  // 规则2b: 关键维度一票否决 — 资金面或技术面极差(≤2)时，不能给买入
+  const vetoDims=["capital","tech"];
+  const vetoHit=scores.filter(s=>vetoDims.includes(s.id)&&s.score<=2);
+  if(vetoHit.length>0&&level>=4){
+    level=3;
+    chain.push({step:"关键维度否决",detail:`${vetoHit.map(s=>s.name+"仅"+s.score).join("、")}，资金/技术面过差不宜买入`,result:"↓ 降至中性"});
+  }
+
+  // 规则2c: 多空背离降级 — 同时有强多和强空维度，信号矛盾降至中性
+  if(bullish.length>=2&&bearish.length>=2&&(level>=4||level<=1)){
+    level=level>=4?3:2;
+    chain.push({step:"多空背离",detail:`${bullish.length}维看多 vs ${bearish.length}维看空，信号矛盾需观察`,result:"→ 回归中间"});
+  }
+
+  // 规则2d: 策略模型共识增强
+  const stratModels=dims.strategy.models||[];
+  const modelBuy=stratModels.filter(m=>m.action==="买入").length;
+  const modelSell=stratModels.filter(m=>m.action==="卖出"||m.action==="减仓").length;
+  if(modelBuy>=5&&level>=3&&level<5){
+    level+=1;
+    chain.push({step:"策略共识",detail:`${modelBuy}/6模型看多，形成强共识`,result:"↑ 升一级"});
+  }
+  if(modelSell>=4&&level<=3&&level>0){
+    level-=1;
+    chain.push({step:"策略共识",detail:`${modelSell}/6模型看空，形成看空共识`,result:"↓ 降一级"});
+  }
+
+  // === Layer 3: 风控覆盖 ===
+
+  // 规则3a: 硬性止损 — 亏损>20%且技术面破位 → 强制强烈减仓+
+  if(pnlPct<-20&&dims.tech.score<4){
+    level=Math.min(level,1);
+    chain.push({step:"止损触发",detail:`浮亏${pnlPct.toFixed(1)}%超过-20%，且技术面${dims.tech.score}分破位`,result:"⚠ 强制≤强烈减仓"});
+  }
+  // 规则3b: 深度亏损 — 亏损>10%且无看多信号 → 至少考虑减仓
+  else if(pnlPct<-10&&bullish.length===0){
+    level=Math.min(level,2);
+    chain.push({step:"亏损预警",detail:`浮亏${pnlPct.toFixed(1)}%且无维度看多(≥7分)`,result:"⚠ 至少考虑减仓"});
+  }
+
+  // 规则3c: 多风险叠加 — 3个以上风险标签 → 降一级
+  if(d.risks.length>=3&&level>=3){
+    level-=1;
+    chain.push({step:"风险叠加",detail:`存在${d.risks.length}项风险: ${d.risks.slice(0,3).join("、")}`,result:"↓ 降一级"});
+  }
+
+  // 规则3d: 危险维度 — 任何维度≤2分 → 不高于中性
+  if(critical.length>0&&level>3){
+    level=3;
+    chain.push({step:"极端预警",detail:`${critical.map(s=>s.name+"仅"+s.score).join("、")}，存在极端风险`,result:"↓ 降至中性"});
+  }
+
+  // 规则3e: 宏观恶劣 — 滞胀象限 → 全局上限为"买入"（不给强烈买入）
+  if(Q==="s"&&level>=5){
+    level=4;
+    chain.push({step:"宏观压制",detail:`滞胀象限下系统性风险高，压制最高评级`,result:"↓ 上限买入"});
+  }
+
+  // Clamp
+  level=Math.max(0,Math.min(5,level));
+
+  // === 映射到输出 ===
+  const LEVELS=[
+    {action:"清仓",     cls:"clear",         urgency:"high",  icon:"🔴"},
+    {action:"强烈减仓", cls:"strong-reduce",  urgency:"high",  icon:"🟠"},
+    {action:"考虑减仓", cls:"reduce",         urgency:"mid",   icon:"🟡"},
+    {action:"中性",     cls:"neutral",        urgency:"low",   icon:"⚪"},
+    {action:"买入",     cls:"buy",            urgency:"mid",   icon:"🟢"},
+    {action:"强烈买入", cls:"strong-buy",     urgency:"low",   icon:"🟢"},
+  ];
+  const L=LEVELS[level];
+
+  // 生成综合推理摘要
+  const summary=buildSummary(d, dims, level, pnlPct, chain);
+
+  // 需要操作 = 非中性
+  const needAction=level!==3;
+
+  return {
+    dims, composite:+composite.toFixed(1), pnl, pnlPct,
+    action:L.action, actionCls:L.cls, urgency:L.urgency, actionIcon:L.icon,
+    level, chain, summary, needAction
+  };
+}
+
+// 生成自然语言推理摘要
+function buildSummary(d, dims, level, pnlPct, chain){
+  const parts=[];
+  const en=DIMS.filter(dm=>dm.on);
+
+  // 开头：总览
+  const bullNames=en.filter(dm=>dims[dm.id].score>=7).map(dm=>dm.name);
+  const bearNames=en.filter(dm=>dims[dm.id].score<=3.5).map(dm=>dm.name);
+
+  if(bullNames.length>0) parts.push(`<b>利多因素：</b>${bullNames.join("、")}表现积极(≥7分)`);
+  if(bearNames.length>0) parts.push(`<b>利空因素：</b>${bearNames.join("、")}发出警示(≤3.5分)`);
+  if(bullNames.length===0&&bearNames.length===0) parts.push("<b>信号中性：</b>各维度均在中间区间，方向不明确");
+
+  // 推理过程
+  if(chain.length>1){
+    const adjustments=chain.slice(1);
+    parts.push(`<b>推理链：</b>基础评分${chain[0].result} → ${adjustments.map(c=>`${c.step}(${c.result})`).join(" → ")} → 最终<b>${["清仓","强烈减仓","考虑减仓","中性","买入","强烈买入"][level]}</b>`);
+  }
+
+  // 持仓盈亏语境
+  if(pnlPct>=20) parts.push(`<b>持仓：</b>浮盈${pnlPct.toFixed(1)}%，注意止盈保护`);
+  else if(pnlPct<=-10) parts.push(`<b>持仓：</b>浮亏${pnlPct.toFixed(1)}%，关注止损纪律`);
+
+  // 关键数据点
+  const keyPoints=[];
+  if(dims.tech.score!==undefined) keyPoints.push(`MACD=${d.macd}`);
+  if(d.rsi) keyPoints.push(`RSI=${d.rsi}`);
+  if(d.peg) keyPoints.push(`PEG=${d.peg}`);
+  const avgTp=d.inst.reduce((a,i)=>a+i.tp,0)/d.inst.length;
+  const upside=((avgTp-d.p)/d.p*100);
+  keyPoints.push(`目标价${avgTp.toFixed(0)}(${upside>=0?"+":""}${upside.toFixed(1)}%)`);
+  parts.push(`<b>关键指标：</b>${keyPoints.join(" | ")}`);
+
+  return parts.join("<br>");
+}
+
+// ============================================================
+// 渲染
+// ============================================================
+function render(){
+  // Clock
+  document.getElementById("clock").textContent=new Date().toLocaleString("zh-CN");
+
+  // Analyze all holdings
+  const analyzed=H.map(d=>({...d, analysis:analyze(d)}));
+  const actionList=analyzed.filter(d=>d.analysis.needAction).sort((a,b)=>{
+    // 清仓/强烈减仓排前面，强烈买入/买入排后面
+    const urgOrder=a.analysis.level<=2&&b.analysis.level<=2
+      ? a.analysis.level-b.analysis.level   // 两个都是卖方，更紧急的在前
+      : a.analysis.level>=4&&b.analysis.level>=4
+      ? b.analysis.level-a.analysis.level   // 两个都是买方，更强的在前
+      : a.analysis.level-b.analysis.level;  // 卖方排在买方前
+    return urgOrder;
+  });
+  const otherList=analyzed.filter(d=>!d.analysis.needAction);
+
+  // Summary
+  const totalVal=analyzed.reduce((a,d)=>a+d.p*d.qty,0);
+  const totalCost=analyzed.reduce((a,d)=>a+d.cost*d.qty,0);
+  const totalPnl=totalVal-totalCost;
+  const totalPnlPct=(totalPnl/totalCost*100);
+  document.getElementById("summary").innerHTML=`
+    <div class="sm"><div class="l">持仓数</div><div class="v">${H.length}</div></div>
+    <div class="sm"><div class="l">需操作</div><div class="v" style="color:${actionList.length?'var(--org)':'var(--grn)'}">${actionList.length}</div></div>
+    <div class="sm"><div class="l">总市值</div><div class="v" style="font-size:14px">${(totalVal/10000).toFixed(1)}万</div></div>
+    <div class="sm"><div class="l">总盈亏</div><div class="v ${totalPnl>=0?'up':'dn'}" style="font-size:14px">${totalPnl>=0?'+':''}${(totalPnl/10000).toFixed(1)}万</div><div class="s ${totalPnlPct>=0?'up':'dn'}">${totalPnlPct>=0?'+':''}${totalPnlPct.toFixed(1)}%</div></div>
+    <div class="sm"><div class="l">宏观象限</div><div class="v" style="font-size:14px">${QN[Q]}</div></div>
+    <div class="sm"><div class="l">恐贪指数</div><div class="v ${MAC.fearGreed>60?'up':MAC.fearGreed<40?'dn':'neu'}" style="font-size:16px">${MAC.fearGreed}</div><div class="s">${MAC.fearGreed>70?"极贪":MAC.fearGreed>55?"贪婪":MAC.fearGreed>45?"中性":MAC.fearGreed>25?"恐惧":"极恐"}</div></div>`;
+
+  // Dimension toggles
+  document.getElementById("dims").innerHTML=`<span class="dims-label">分析维度：</span>`+DIMS.map((dm,i)=>
+    `<div class="dim-btn ${dm.on?'on':''}" onclick="toggleDim(${i})"><span class="dot"></span>${dm.icon} ${dm.name}<span class="dim-weight">${dm.on?dm.weight+'%':''}</span></div>`
+  ).join("");
+
+  // Macro
+  renderMacro();
+
+  // Tabs
+  document.getElementById("tabs").innerHTML=`
+    <div class="tab ${curTab==='action'?'on':''}" onclick="curTab='action';render()">🎯 需要操作<span class="cnt">${actionList.length}</span></div>
+    <div class="tab ${curTab==='other'?'on':''}" onclick="curTab='other';render()">📋 其他持仓<span class="cnt">${otherList.length}</span></div>`;
+
+  // Content
+  const el=document.getElementById("content");
+  if(curTab==="action"){
+    if(!actionList.length){el.innerHTML='<div class="empty">所有持仓状态良好，暂无需要操作的标的</div>';return}
+    el.innerHTML=actionList.map(renderActionCard).join("");
+  }else{
+    if(!otherList.length){el.innerHTML='<div class="empty">所有持仓都有操作建议，请查看"需要操作"标签</div>';return}
+    el.innerHTML=renderOtherTable(otherList);
+  }
+  document.getElementById("footer").textContent=`AI持仓决策助手 v1 | ${DIMS.filter(d=>d.on).length}维分析 | ${QN[Q]}象限 | 仅供参考，不构成投资建议`;
+}
+
+function renderMacro(){
+  const items=[
+    {l:"VIX恐慌",v:MAC.vix,s:MAC.vix>25?"高波动":MAC.vix>18?"正常":"平静",c:MAC.vix>25?"dn":"up"},
+    {l:"美10Y",v:MAC.us10y+"%",s:"收益率",c:""},
+    {l:"美元指数",v:MAC.dxy,s:(MAC.dxy>104?"+":"")+"强势",c:MAC.dxy>104?"dn":"up"},
+    {l:"人民币",v:MAC.cny,s:"兑美元",c:""},
+    {l:"S&P500",v:MAC.sp500,s:(MAC.sp500Chg>0?"+":"")+MAC.sp500Chg+"%",c:MAC.sp500Chg>=0?"up":"dn"},
+    {l:"纳斯达克",v:MAC.ndx,s:(MAC.ndxChg>0?"+":"")+MAC.ndxChg+"%",c:MAC.ndxChg>=0?"up":"dn"},
+    {l:"恒生指数",v:MAC.hsi,s:(MAC.hsiChg>0?"+":"")+MAC.hsiChg+"%",c:MAC.hsiChg>=0?"up":"dn"},
+    {l:"上证指数",v:MAC.sse,s:(MAC.sseChg>0?"+":"")+MAC.sseChg+"%",c:MAC.sseChg>=0?"up":"dn"},
+    {l:"恐贪指数",v:MAC.fearGreed,s:MAC.fearGreed>70?"极贪":MAC.fearGreed>55?"贪婪":MAC.fearGreed>45?"中性":MAC.fearGreed>25?"恐惧":"极恐",c:MAC.fearGreed>55?"up":MAC.fearGreed<40?"dn":"neu"},
+    {l:"北向资金",v:MAC.northbound,s:"亿元",c:MAC.northbound>0?"up":"dn"},
+    {l:"两融余额",v:MAC.margin_balance,s:"万亿",c:""},
+    {l:"宏观象限",v:QN[Q],s:"达里奥框架",c:Q==="g"?"up":Q==="s"?"dn":"neu"},
+  ];
+  document.getElementById("macroBody").innerHTML=items.map(m=>
+    `<div class="mc"><div class="l">${m.l}</div><div class="v ${m.c}">${m.v}</div><div class="s ${m.c}">${m.s}</div></div>`
+  ).join("");
+  document.getElementById("macroBody").style.display=macroOpen?"grid":"none";
+  document.getElementById("macroArrow").textContent=macroOpen?"▴":"▾";
+}
+
+function scoreColor(s){return s>=8?'var(--grn)':s>=6.5?'var(--teal)':s>=5?'var(--cyan)':s>=3.5?'var(--org)':'var(--red)'}
+function levelColor(l){return l>=5?'var(--grn)':l>=4?'var(--teal)':l>=3?'var(--cyan)':l>=2?'var(--org)':'var(--red)'}
+
+function renderActionCard(d){
+  const a=d.analysis;
+  const pnlStr=`${a.pnl>=0?'+':''}${a.pnl.toFixed(0)}`;
+  const pnlPctStr=`${a.pnlPct>=0?'+':''}${a.pnlPct.toFixed(1)}%`;
+  const mktCls=d.mk==="美股"?"us":d.mk==="港股"?"hk":"a";
+  const urgLabel={high:"紧急",mid:"关注",low:""}[a.urgency]||"";
+  const urgCls={high:"urg-high",mid:"urg-mid",low:"urg-low"}[a.urgency]||"";
+
+  // Dimension scores HTML
+  const dimHtml=DIMS.map(dm=>{
+    const ds=a.dims[dm.id];
+    const isOn=dm.on;
+    return `<div class="dscore ${isOn?'':'off'}"><div class="l">${dm.icon} ${dm.name}</div><div class="v" style="color:${isOn?scoreColor(ds.score):'var(--t3)'}">${ds.score}</div><div class="bar"><div class="bar-fill" style="width:${ds.score*10}%;background:${scoreColor(ds.score)}"></div></div></div>`;
+  }).join("");
+
+  // Top reasons (collect from all enabled dims, prioritize neg for sell / pos for buy)
+  const allReasons=[];
+  const prioritize=a.level>=4?"pos":"neg";
+  DIMS.forEach(dm=>{if(dm.on){
+    const rs=a.dims[dm.id].reasons;
+    const prio=rs.filter(r=>r.t===prioritize).slice(0,2);
+    const rest=rs.filter(r=>r.t!==prioritize).slice(0,1);
+    prio.concat(rest).forEach(r=>allReasons.push(r));
+  }});
+  const topReasons=allReasons.slice(0,8);
+  const reasonsHtml=topReasons.map(r=>`<span class="reason-tag rt-${r.t}">${r.t==='pos'?'▲':r.t==='neg'?'▼':r.t==='neu'?'●':'ℹ'}</span>${r.x}`).join("<br>");
+
+  // Strategy models detail
+  const stratModels=a.dims.strategy.models||[];
+  const stratHtml=stratModels.map(m=>{
+    const ac=m.action==="买入"?"up":m.action==="卖出"||m.action==="减仓"?"dn":"";
+    return `<div class="strat-mini"><div class="sn">${m.icon} ${m.name}</div><div class="sv" style="color:${scoreColor(m.score)}">${m.score}</div><div class="sa ${ac}">${m.action}</div></div>`;
+  }).join("");
+
+  const uid=d.sym.replace(/\./g,'_');
+  return `<div class="acard">
+    <div class="acard-top">
+      <div class="acard-info"><h3>${d.n}<span class="sym">${d.sym}</span><span class="mkt mkt-${mktCls}">${d.mk}</span></h3></div>
+      <div><span class="badge badge-${a.actionCls}">${a.actionIcon} ${a.action}</span>${urgLabel?`<span class="badge-urgent ${urgCls}">${urgLabel}</span>`:''}</div>
+    </div>
+    <div class="pos-row">
+      <div class="pos-item"><span class="l">持仓 </span><span class="v">${d.qty}股</span></div>
+      <div class="pos-item"><span class="l">成本 </span><span class="v">${d.cost}</span></div>
+      <div class="pos-item"><span class="l">现价 </span><span class="v">${d.p}</span></div>
+      <div class="pos-item"><span class="l">盈亏 </span><span class="v ${a.pnl>=0?'up':'dn'}">${pnlStr}</span></div>
+      <div class="pos-item"><span class="l">收益率 </span><span class="v ${a.pnlPct>=0?'up':'dn'}">${pnlPctStr}</span></div>
+    </div>
+    <div class="comp">
+      <div class="comp-score" style="color:${scoreColor(a.composite)}">${a.composite}</div>
+      <div><div class="comp-label">综合评分（${DIMS.filter(dm=>dm.on).length}维加权）</div><div class="comp-action" style="color:${scoreColor(a.composite)}">${a.action}</div></div>
+    </div>
+    <div class="dim-scores">${dimHtml}</div>
+    <div class="reasons">${a.summary}</div>
+    <div style="margin-top:8px;font-size:10px;color:var(--t2);line-height:1.6">${reasonsHtml}</div>
+    <div class="detail-toggle" onclick="toggleDetail('${uid}')">📋 展开决策推理链 + 策略模型 ▾</div>
+    <div class="detail-body" id="det_${uid}">
+      <div class="detail-section"><div class="dt">🔗 决策推理链</div>${a.chain.map((c,i)=>`<div class="detail-row" style="padding:3px 0"><span style="color:var(--cyan);min-width:90px">${i===0?'①':i===1?'②':i===2?'③':i===3?'④':'⑤'} ${c.step}</span><span style="flex:1;color:var(--t2)">${c.detail}</span><span style="min-width:70px;text-align:right;font-weight:700;color:${c.result.includes("↑")||c.result.includes("强烈买入")||c.result.includes("买入")?'var(--grn)':c.result.includes("↓")||c.result.includes("强制")?'var(--red)':'var(--cyan)'}">${c.result}</span></div>`).join("")}</div>
+      <div class="detail-section"><div class="dt">🎯 六大策略模型</div><div class="strat-grid">${stratHtml}</div></div>
+      <div class="detail-section"><div class="dt">📍 关键价位</div><div class="detail-row"><span>支撑位</span><span style="color:var(--grn)">${d.sup}</span></div><div class="detail-row"><span>阻力位</span><span style="color:var(--red)">${d.res}</span></div><div class="detail-row"><span>52周高</span><span>${d.h52}</span></div></div>
+      <div class="detail-section"><div class="dt">🏦 机构观点</div>${d.inst.map(i=>`<div class="detail-row"><span>${i.f}</span><span style="color:${i.r==='买入'||i.r==='增持'?'var(--grn)':i.r==='卖出'||i.r==='减持'?'var(--red)':'var(--t2)'}">${i.r} | 目标${i.tp}</span></div>`).join("")}</div>
+    </div>
+  </div>`;
+}
+
+function renderOtherTable(list){
+  const rows=list.map(d=>{
+    const a=d.analysis;
+    const pnlPctStr=`${a.pnlPct>=0?'+':''}${a.pnlPct.toFixed(1)}%`;
+    const mktCls=d.mk==="美股"?"us":d.mk==="港股"?"hk":"a";
+    return `<tr>
+      <td><b>${d.n}</b><span class="sym" style="color:var(--t3);font-size:9px;margin-left:4px">${d.sym}</span><span class="mkt mkt-${mktCls}" style="font-size:8px;padding:1px 4px;margin-left:4px">${d.mk}</span></td>
+      <td>${d.p}</td>
+      <td class="${a.pnlPct>=0?'up':'dn'}">${pnlPctStr}</td>
+      <td class="sc" style="color:${scoreColor(a.composite)}">${a.composite}</td>
+      ${DIMS.map(dm=>`<td class="sc" style="color:${dm.on?scoreColor(a.dims[dm.id].score):'var(--t3)'};opacity:${dm.on?1:0.3}">${a.dims[dm.id].score}</td>`).join("")}
+      <td><span class="badge badge-${a.actionCls}" style="font-size:9px;padding:2px 8px">${a.actionIcon} ${a.action}</span></td>
+    </tr>`;
+  }).join("");
+  return `<table class="tbl"><thead><tr><th>标的</th><th>现价</th><th>盈亏</th><th>综合</th>${DIMS.map(dm=>`<th>${dm.icon}</th>`).join("")}<th>状态</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ============================================================
+// 事件
+// ============================================================
+function toggleDim(i){DIMS[i].on=!DIMS[i].on;render()}
+function toggleDetail(uid){
+  const el=document.getElementById("det_"+uid);
+  el.classList.toggle("show");
+}
+document.getElementById("macroToggle").onclick=()=>{macroOpen=!macroOpen;renderMacro()};
+
+// ============================================================
+// 初始化
+// ============================================================
+render();
+setInterval(()=>{document.getElementById("clock").textContent=new Date().toLocaleString("zh-CN")},1000);
+</script>
+</body>
+</html>

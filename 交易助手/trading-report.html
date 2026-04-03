@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI交易助手</title>
+<style>
+:root{--bg:#0a0e17;--c1:#111827;--c2:#1a2332;--bd:#2a3548;--t1:#e5e7eb;--t2:#9ca3af;--t3:#6b7280;--blue:#3b82f6;--cyan:#06b6d4;--grn:#10b981;--red:#ef4444;--org:#f59e0b;--purp:#8b5cf6}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;line-height:1.6}
+
+.top{padding:14px 20px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--c1)}
+.top h1{font-size:17px;background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.top .t{font-size:10px;color:var(--t3)}
+
+.tabs{display:flex;gap:4px;padding:10px 20px;background:var(--c1);border-bottom:1px solid var(--bd);overflow-x:auto}
+.tab{padding:6px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--c2);cursor:pointer;font-size:11px;color:var(--t2);white-space:nowrap;transition:.15s}
+.tab:hover{border-color:var(--blue)}
+.tab.on{border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.08)}
+
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+.sec{margin-bottom:18px}
+.sec-t{font-size:13px;font-weight:700;margin-bottom:10px}
+
+.macro{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
+.mc{background:var(--c2);border:1px solid var(--bd);border-radius:8px;padding:10px;text-align:center}
+.mc .l{font-size:8px;color:var(--t3);margin-bottom:2px}
+.mc .v{font-size:20px;font-weight:800}
+.mc .s{font-size:9px;margin-top:1px}
+.up{color:var(--grn)}.dn{color:var(--red)}
+
+.qrow{display:flex;gap:6px;margin-top:8px}
+.qc{flex:1;padding:8px;border-radius:8px;text-align:center;font-size:10px;font-weight:600;opacity:.3;transition:.2s}
+.qc.on{opacity:1}
+.qg{background:rgba(16,185,129,.12);color:var(--grn)}
+.qo{background:rgba(245,158,11,.12);color:var(--org)}
+.qr{background:rgba(59,130,246,.12);color:var(--blue)}
+.qs{background:rgba(239,68,68,.12);color:var(--red)}
+
+.adv-row{display:flex;gap:8px;margin-bottom:10px}
+.adv-num{flex:1;background:var(--c2);border:1px solid var(--bd);border-radius:8px;padding:10px;text-align:center}
+.adv-num .l{font-size:9px;color:var(--t3)}
+.adv-num .v{font-size:24px;font-weight:800}
+.adv-list{display:flex;flex-direction:column;gap:4px}
+.adv{background:var(--c2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:11px;display:flex;gap:8px;align-items:baseline}
+.adv .tag{font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;flex-shrink:0}
+.adv .tag.b{background:rgba(16,185,129,.12);color:var(--grn)}
+.adv .tag.s{background:rgba(239,68,68,.12);color:var(--red)}
+.adv .tag.h{background:rgba(59,130,246,.12);color:var(--blue)}
+.adv .tag.w{background:rgba(245,158,11,.12);color:var(--org)}
+
+.sbox{display:flex;gap:6px;margin-bottom:8px}
+.sinput{flex:1;background:var(--c2);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;color:var(--t1);font-size:13px;outline:none}
+.sinput:focus{border-color:var(--blue)}
+.sbtn{background:var(--blue);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+.stags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.stag{font-size:9px;padding:3px 8px;border-radius:5px;background:var(--c2);border:1px solid var(--bd);color:var(--t3);cursor:pointer}
+.stag:hover{color:var(--t1);border-color:var(--blue)}
+
+.card{background:var(--c2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:10px;animation:fi .25s ease}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+.card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:4px}
+.card-name{font-size:15px;font-weight:700}
+.card-sym{font-size:10px;color:var(--t3);margin-left:4px}
+.badge{font-size:10px;font-weight:600;padding:3px 10px;border-radius:6px}
+.badge.buy{background:rgba(16,185,129,.1);color:var(--grn)}
+.badge.sell{background:rgba(239,68,68,.1);color:var(--red)}
+.badge.hold{background:rgba(6,182,212,.1);color:var(--cyan)}
+.badge.clear{background:rgba(239,68,68,.18);color:var(--red);font-weight:800}
+.nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.nums>div{background:rgba(255,255,255,.02);padding:6px;border-radius:5px;text-align:center}
+.nums .l{font-size:8px;color:var(--t3)}
+.nums .v{font-size:14px;font-weight:700}
+
+/* 规则检查列表 */
+.rules{margin:8px 0;font-size:11px}
+.rule{display:flex;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.rule:last-child{border-bottom:none}
+.rule .icon{flex-shrink:0;width:16px;text-align:center}
+.rule .pass{color:var(--grn)}
+.rule .fail{color:var(--red)}
+.rule .warn{color:var(--org)}
+.rule .name{color:var(--t2);min-width:100px}
+.rule .cond{color:var(--t3);font-family:'SF Mono',Monaco,monospace;font-size:10px;flex:1}
+.rule .result{font-weight:700;min-width:50px;text-align:right}
+
+.verdict{border-radius:8px;padding:10px 14px;margin-top:10px;font-size:11px;line-height:1.6}
+.verdict.buy-v{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15)}
+.verdict.sell-v{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)}
+.verdict.hold-v{background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.15)}
+.verdict.clear-v{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25)}
+.verdict b{font-size:10px;color:var(--purp)}
+
+.empty{text-align:center;padding:32px;color:var(--t3);font-size:12px}
+.footer{text-align:center;padding:14px;color:var(--t3);font-size:8px;border-top:1px solid var(--bd);margin-top:16px}
+@media(max-width:600px){.nums{grid-template-columns:repeat(2,1fr)}.adv-row{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div><h1>AI交易助手</h1><div class="t" id="time"></div></div>
+</div>
+<div class="tabs" id="tabs"></div>
+
+<div class="wrap">
+  <div class="sec">
+    <div class="sec-t">🌍 宏观环境</div>
+    <div class="macro" id="macro"></div>
+    <div class="qrow" id="quad"></div>
+  </div>
+  <div class="sec">
+    <div class="sec-t">🎯 每日建议</div>
+    <div class="adv-row" id="advNum"></div>
+    <div class="adv-list" id="advList"></div>
+  </div>
+  <div class="sec">
+    <div class="sec-t">🔍 搜索诊断</div>
+    <div class="sbox">
+      <input class="sinput" id="si" placeholder="输入代码或名称，如 AAPL、腾讯、600519" onkeydown="if(event.key==='Enter')go()">
+      <button class="sbtn" onclick="go()">搜索</button>
+    </div>
+    <div class="stags" id="hotTags"></div>
+    <div id="results"><div class="empty">输入股票代码开始诊断</div></div>
+  </div>
+</div>
+<div class="footer" id="ft"></div>
+
+<script>
+// ============================================================
+// 宏观数据
+// ============================================================
+const MAC = {
+  vix:16.8, us10y:4.25, dxy:103.5, sp500:5820, hsi:23650, sse:3380,
+  fearGreed:62, northbound:45.8,
+  sp500Chg:0.85, hsiChg:-0.32, sseChg:0.45, dxyChg:-0.15
+};
+const Q = "g"; // g=金发女孩 o=过热 r=衰退 s=滞胀
+const QN = {g:"金发女孩",o:"过热",r:"衰退",s:"滞胀"};
+
+// ============================================================
+// 股票数据 - 每只股票携带各模型评判所需的原始指标
+// ============================================================
+const DB = {
+  "AAPL":{n:"苹果",sym:"AAPL",mk:"美",sec:"科技",p:178.5,
+    // 基本面
+    pe:28.5, peg:1.2, roe:147, eps_growth:18, eps_q_growth:22, annual_eps_growth_3y:20, debt_ratio:0.32,
+    // 技术面
+    above_ma20:true, above_ma60:true, macd:"金叉", rsi:55,
+    high_20d:180.2, low_10d:172.5, high_52w:199.6, near_52w_high:false,
+    vol_ratio:1.1, price_vs_support:"上方",
+    breakout_20d:false, breakout_key:false,
+    // 资金/情绪
+    inst_pct:72, analyst_coverage:"高", northbound_flow:"流入",
+    relative_strength:78,
+    // 关键价位
+    sup:170.2, res:188.5, sl:151.8, key_levels:[170,175,180,190],
+    // 信号
+    signals:["MACD金叉","均线多头排列","RSI=55中性"],
+    risks:[]
+  },
+  "MSFT":{n:"微软",sym:"MSFT",mk:"美",sec:"科技",p:425.8,
+    pe:35.2, peg:1.5, roe:39, eps_growth:22, eps_q_growth:28, annual_eps_growth_3y:18, debt_ratio:0.28,
+    above_ma20:true, above_ma60:true, macd:"多头", rsi:52,
+    high_20d:430, low_10d:415, high_52w:445, near_52w_high:false,
+    vol_ratio:0.9, price_vs_support:"上方",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:75, analyst_coverage:"高", northbound_flow:"N/A",
+    relative_strength:72,
+    sup:410, res:445, sl:382, key_levels:[400,420,440,450],
+    signals:["云业务高增长","AI Copilot加速"],
+    risks:[]
+  },
+  "NVDA":{n:"英伟达",sym:"NVDA",mk:"美",sec:"半导体",p:125.3,
+    pe:65, peg:0.9, roe:115, eps_growth:70, eps_q_growth:85, annual_eps_growth_3y:55, debt_ratio:0.25,
+    above_ma20:true, above_ma60:true, macd:"多头", rsi:62,
+    high_20d:128, low_10d:118, high_52w:140, near_52w_high:false,
+    vol_ratio:1.4, price_vs_support:"上方",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:68, analyst_coverage:"高", northbound_flow:"N/A",
+    relative_strength:92,
+    sup:110, res:140, sl:95, key_levels:[100,120,130,140],
+    signals:["AI算力龙头","数据中心爆发","RSI=62偏多"],
+    risks:["估值历史高位"]
+  },
+  "GOOGL":{n:"谷歌",sym:"GOOGL",mk:"美",sec:"科技",p:175.2,
+    pe:24, peg:1.1, roe:28, eps_growth:20, eps_q_growth:18, annual_eps_growth_3y:15, debt_ratio:0.12,
+    above_ma20:true, above_ma60:false, macd:"弱多", rsi:48,
+    high_20d:178, low_10d:170, high_52w:185, near_52w_high:false,
+    vol_ratio:0.8, price_vs_support:"上方",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:70, analyst_coverage:"高", northbound_flow:"N/A",
+    relative_strength:65,
+    sup:165, res:185, sl:148, key_levels:[165,170,175,185],
+    signals:["搜索份额稳定","Gemini迭代"],
+    risks:["反垄断诉讼"]
+  },
+  "TSLA":{n:"特斯拉",sym:"TSLA",mk:"美",sec:"新能源车",p:178.5,
+    pe:58, peg:3.2, roe:20, eps_growth:10, eps_q_growth:5, annual_eps_growth_3y:25, debt_ratio:0.15,
+    above_ma20:false, above_ma60:false, macd:"死叉", rsi:38,
+    high_20d:195, low_10d:172, high_52w:280, near_52w_high:false,
+    vol_ratio:1.6, price_vs_support:"接近",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:45, analyst_coverage:"高", northbound_flow:"N/A",
+    relative_strength:35,
+    sup:160, res:200, sl:135, key_levels:[150,170,180,200],
+    signals:["FSD进展","Robotaxi预期","放量下跌"],
+    risks:["估值争议大","竞争加剧","交付量增速放缓","MACD死叉"]
+  },
+  "0700.HK":{n:"腾讯控股",sym:"0700.HK",mk:"港",sec:"科技",p:385.6,
+    pe:22, peg:0.95, roe:22, eps_growth:20, eps_q_growth:24, annual_eps_growth_3y:12, debt_ratio:0.30,
+    above_ma20:true, above_ma60:true, macd:"多头", rsi:58,
+    high_20d:392, low_10d:375, high_52w:405, near_52w_high:false,
+    vol_ratio:1.3, price_vs_support:"上方",
+    breakout_20d:false, breakout_key:true,
+    inst_pct:55, analyst_coverage:"高", northbound_flow:"流入",
+    relative_strength:80,
+    sup:370, res:405, sl:294, key_levels:[370,380,390,400,405],
+    signals:["MACD多头","放量上涨","量价配合好"],
+    risks:[]
+  },
+  "9988.HK":{n:"阿里巴巴",sym:"9988.HK",mk:"港",sec:"科技",p:92.5,
+    pe:12, peg:0.6, roe:12, eps_growth:15, eps_q_growth:12, annual_eps_growth_3y:5, debt_ratio:0.20,
+    above_ma20:false, above_ma60:false, macd:"弱空", rsi:42,
+    high_20d:98, low_10d:88, high_52w:120, near_52w_high:false,
+    vol_ratio:0.7, price_vs_support:"接近",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:40, analyst_coverage:"中", northbound_flow:"流入",
+    relative_strength:42,
+    sup:85, res:100, sl:72, key_levels:[85,90,95,100],
+    signals:["估值历史低位","回购加大"],
+    risks:["电商竞争激烈","增速放缓"]
+  },
+  "9618.HK":{n:"京东",sym:"9618.HK",mk:"港",sec:"电商",p:148.5,
+    pe:14, peg:0.8, roe:15, eps_growth:16, eps_q_growth:18, annual_eps_growth_3y:10, debt_ratio:0.18,
+    above_ma20:true, above_ma60:false, macd:"弱多", rsi:50,
+    high_20d:152, low_10d:142, high_52w:165, near_52w_high:false,
+    vol_ratio:0.9, price_vs_support:"上方",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:42, analyst_coverage:"中", northbound_flow:"流入",
+    relative_strength:55,
+    sup:135, res:160, sl:118, key_levels:[135,140,150,160],
+    signals:["物流效率提升","利润率改善"],
+    risks:["消费恢复不及预期"]
+  },
+  "600519.SS":{n:"贵州茅台",sym:"600519.SS",mk:"A",sec:"消费",p:1580,
+    pe:25, peg:1.8, roe:33, eps_growth:12, eps_q_growth:8, annual_eps_growth_3y:14, debt_ratio:0.05,
+    above_ma20:false, above_ma60:false, macd:"空头", rsi:38,
+    high_20d:1620, low_10d:1560, high_52w:1850, near_52w_high:false,
+    vol_ratio:0.6, price_vs_support:"接近",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:80, analyst_coverage:"高", northbound_flow:"流出",
+    relative_strength:30,
+    sup:1520, res:1650, sl:1345, key_levels:[1500,1550,1600,1650],
+    signals:["RSI=38接近超卖","缩量下跌"],
+    risks:["消费恢复慢","库存偏高","MACD空头"]
+  },
+  "000858.SZ":{n:"五粮液",sym:"000858.SZ",mk:"A",sec:"消费",p:128.5,
+    pe:18, peg:1.2, roe:25, eps_growth:13, eps_q_growth:10, annual_eps_growth_3y:12, debt_ratio:0.08,
+    above_ma20:false, above_ma60:false, macd:"弱空", rsi:42,
+    high_20d:135, low_10d:125, high_52w:168, near_52w_high:false,
+    vol_ratio:0.7, price_vs_support:"接近",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:65, analyst_coverage:"中", northbound_flow:"中性",
+    relative_strength:38,
+    sup:120, res:140, sl:108, key_levels:[120,125,130,140],
+    signals:["估值中低位"],
+    risks:["白酒去库存"]
+  },
+  "300750.SZ":{n:"宁德时代",sym:"300750.SZ",mk:"A",sec:"新能源",p:218.5,
+    pe:22, peg:0.85, roe:20, eps_growth:25, eps_q_growth:30, annual_eps_growth_3y:28, debt_ratio:0.35,
+    above_ma20:true, above_ma60:true, macd:"金叉", rsi:55,
+    high_20d:225, low_10d:210, high_52w:260, near_52w_high:false,
+    vol_ratio:1.2, price_vs_support:"上方",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:55, analyst_coverage:"高", northbound_flow:"流入",
+    relative_strength:68,
+    sup:200, res:240, sl:175, key_levels:[200,210,220,240],
+    signals:["全球电池份额第一","固态电池进展","MACD金叉"],
+    risks:["产能过剩压力"]
+  },
+  "601318.SS":{n:"中国平安",sym:"601318.SS",mk:"A",sec:"金融",p:52.8,
+    pe:8, peg:0.5, roe:16, eps_growth:12, eps_q_growth:10, annual_eps_growth_3y:8, debt_ratio:0.82,
+    above_ma20:false, above_ma60:false, macd:"弱空", rsi:44,
+    high_20d:55, low_10d:51, high_52w:62, near_52w_high:false,
+    vol_ratio:0.8, price_vs_support:"接近",
+    breakout_20d:false, breakout_key:false,
+    inst_pct:60, analyst_coverage:"高", northbound_flow:"中性",
+    relative_strength:40,
+    sup:48, res:58, sl:42, key_levels:[48,50,55,58],
+    signals:["低估值修复","新业务回暖"],
+    risks:["地产风险敞口","利率下行"]
+  }
+};
+
+// 别名
+const A={};
+Object.entries(DB).forEach(([k,v])=>{[v.n,k,k.toLowerCase(),v.sym.toLowerCase()].forEach(a=>A[a]=k)});
+const alias={"茅台":"600519.SS","腾讯":"0700.HK","阿里":"9988.HK","英伟达":"NVDA","苹果":"AAPL","微软":"MSFT","谷歌":"GOOGL","特斯拉":"TSLA","京东":"9618.HK","宁德":"300750.SZ","平安":"601318.SS","五粮液":"000858.SZ","nvidia":"NVDA","apple":"AAPL","microsoft":"MSFT","google":"GOOGL","tesla":"TSLA","tencent":"0700.HK","jd":"9618.HK"};
+Object.entries(alias).forEach(([k,v])=>A[k]=v);
+
+// ============================================================
+// 六套策略模型 - 每套有独立的规则评估函数
+// ============================================================
+const MODELS = {
+  db: {
+    icon:"🎯", name:"达里奥+巴菲特", style:"稳健价值",
+    pos:{g:[70,85],o:[50,65],r:[30,45],s:[20,35]},
+    // 每条规则：name, test(d,mac) => {pass:bool, detail:string}
+    buyRules: [
+      {name:"基本面≥7分", pri:"必要", test(d){ const s=calcFund(d); return {pass:s>=7, detail:`基本面=${s.toFixed(1)}`}}},
+      {name:"安全边际(PEG<1.2)", pri:"必要", test(d){ return {pass:d.peg<=1.2, detail:`PEG=${d.peg}`}}},
+      {name:"技术面不差", pri:"辅助", test(d){ return {pass:d.above_ma20||d.price_vs_support==="接近", detail:d.above_ma20?"MA20上方":"MA20下方"}}},
+      {name:"资金面配合", pri:"辅助", test(d){ return {pass:d.northbound_flow==="流入"||d.vol_ratio>=1.0, detail:`北向${d.northbound_flow} 量比${d.vol_ratio}`}}},
+    ],
+    sellRules: [
+      {name:"基本面恶化(<5)", pri:"最高", test(d){ const s=calcFund(d); return {pass:s<5, detail:`基本面=${s.toFixed(1)}`}}},
+      {name:"估值过高(PEG>2)", pri:"高", test(d){ return {pass:d.peg>2, detail:`PEG=${d.peg}`}}},
+      {name:"滞胀象限", pri:"高", test(){ return {pass:Q==="s", detail:`当前=${QN[Q]}`}}},
+      {name:"MACD空头确认", pri:"中", test(d){ return {pass:d.macd.includes("空")||d.macd.includes("死"), detail:`MACD=${d.macd}`}}},
+    ],
+    clearRules: [
+      {name:"基本面崩塌(<3)", pri:"最高", test(d){ const s=calcFund(d); return {pass:s<3, detail:`基本面=${s.toFixed(1)}`}}},
+    ],
+    holdDesc: "基本面稳定(≥6) + 评分合理区间 → 巴菲特长期持有",
+    adviceFn(d,results){
+      const f=calcFund(d);
+      return `达里奥${QN[Q]}象限，建议仓位${this.pos[Q][0]}-${this.pos[Q][1]}%。基本面${f.toFixed(1)}${f>=7?"符合巴菲特标准":"偏弱"}。PEG=${d.peg}${d.peg<1?"有安全边际":d.peg>1.5?"偏贵":""}。ROE=${d.roe}%。`;
+    }
+  },
+
+  turtle: {
+    icon:"🐢", name:"海龟交易法", style:"趋势跟踪",
+    pos:{g:[75,90],o:[60,75],r:[20,35],s:[15,25]},
+    buyRules: [
+      {name:"唐奇安20日突破", pri:"核心", test(d){ return {pass:d.p>d.high_20d*0.99, detail:`价${d.p} vs 20日高${d.high_20d}`}}},
+      {name:"趋势确认(MA20上方)", pri:"核心", test(d){ return {pass:d.above_ma20, detail:d.above_ma20?"MA20上方":"MA20下方"}}},
+      {name:"量能配合(量比>1)", pri:"建议", test(d){ return {pass:d.vol_ratio>=1.0, detail:`量比=${d.vol_ratio}`}}},
+    ],
+    sellRules: [
+      {name:"跌破10日低点(止盈)", pri:"高", test(d){ return {pass:d.p<d.low_10d, detail:`价${d.p} vs 10日低${d.low_10d}`}}},
+      {name:"MA20下方(趋势破)", pri:"高", test(d){ return {pass:!d.above_ma20&&!d.above_ma60, detail:d.above_ma20?"趋势在":"双均破位"}}},
+      {name:"RSI超买回落(>75)", pri:"中", test(d){ return {pass:d.rsi>75, detail:`RSI=${d.rsi}`}}},
+    ],
+    clearRules: [
+      {name:"假突破(突破后快速回落)", pri:"高", test(d){ return {pass:d.breakout_20d===false&&d.p<d.high_20d*0.95, detail:d.breakout_20d?"突破有效":"无有效突破"}}},
+    ],
+    holdDesc: "价格在20日通道内且未触发止盈/止损 → 趋势未变不下车",
+    adviceFn(d){
+      const nearBreak = d.p > d.high_20d * 0.97;
+      return `海龟看趋势：${d.above_ma20?"均线多头排列":"均线空头"}。${nearBreak?`价格${d.p}接近20日高点${d.high_20d}，关注突破信号。`:`距20日高点${d.high_20d}还有距离，等待。`}ATR仓位管理：单标的风险≤总资金1%。${d.above_ma60?"长期趋势向上。":"长期趋势不明。"}`;
+    }
+  },
+
+  liver: {
+    icon:"📊", name:"利弗莫尔", style:"波段关键点",
+    pos:{g:[65,80],o:[45,60],r:[25,40],s:[15,30]},
+    buyRules: [
+      {name:"关键价位突破", pri:"核心", test(d){ return {pass:d.breakout_key, detail:d.breakout_key?"关键点已突破":"未突破关键价"}}},
+      {name:"放量确认(量比>1.3)", pri:"核心", test(d){ return {pass:d.vol_ratio>=1.3, detail:`量比=${d.vol_ratio}`}}},
+      {name:"阻力位附近", pri:"辅助", test(d){ const near=d.key_levels.some(l=>Math.abs(d.p-l)/l<0.02); return {pass:near, detail:near?"接近关键价位":"远离关键价位"}}},
+    ],
+    sellRules: [
+      {name:"关键支撑破位", pri:"高", test(d){ return {pass:d.p<d.sup*1.01&&d.vol_ratio>1.2, detail:`价${d.p} vs 支撑${d.sup}`}}},
+      {name:"10%总资金保护", pri:"最高", test(d){ return {pass:false, detail:"需结合持仓成本判断"}}},
+      {name:"高潮顶部(巨量长上影)", pri:"中", test(d){ return {pass:d.rsi>80&&d.vol_ratio>2, detail:`RSI=${d.rsi} 量比=${d.vol_ratio}`}}},
+    ],
+    clearRules: [
+      {name:"试探仓亏>5%清仓", pri:"高", test(d){ return {pass:false, detail:"需结合入场价判断"}}},
+    ],
+    holdDesc: "趋势方向正确+未触及关键价位 → 坐着不动赚大钱",
+    adviceFn(d){
+      const nearKey = d.key_levels.filter(l=>Math.abs(d.p-l)/l<0.03);
+      return `利弗莫尔视角：现价${d.p}。${nearKey.length?`接近关键价位${nearKey.join("/")}，密切关注突破方向。`:"远离关键价位，耐心等待。"}${d.breakout_key?"已有突破信号，可用20%仓位试探。":"未到入场点。"}原则：只在盈利时加码，绝不摊平。`;
+    }
+  },
+
+  soros: {
+    icon:"🌊", name:"索罗斯反身性", style:"宏观对冲",
+    pos:{g:[70,90],o:[40,55],r:[30,50],s:[10,25]},
+    buyRules: [
+      {name:"反身性正循环(量价齐升)", pri:"核心", test(d){ return {pass:d.above_ma20&&d.vol_ratio>=1.1&&d.northbound_flow==="流入", detail:`MA20${d.above_ma20?"上":"下"} 量比${d.vol_ratio} 资金${d.northbound_flow}`}}},
+      {name:"极端恐慌逆向(恐贪<25)", pri:"高", test(d){ return {pass:MAC.fearGreed<25&&calcFund(d)>=6, detail:`恐贪=${MAC.fearGreed} 基本面=${calcFund(d).toFixed(1)}`}}},
+      {name:"政策/情绪拐点", pri:"高", test(d){ return {pass:d.rsi<35&&d.northbound_flow==="流入", detail:`RSI=${d.rsi}(超卖) 资金${d.northbound_flow}`}}},
+    ],
+    sellRules: [
+      {name:"正循环见顶(估值脱离)", pri:"高", test(d){ return {pass:d.peg>2.5&&d.rsi>70, detail:`PEG=${d.peg} RSI=${d.rsi}`}}},
+      {name:"先出后想(判断错误)", pri:"最高", test(d){ return {pass:!d.above_ma20&&!d.above_ma60&&d.vol_ratio>1.5, detail:"双均破位+放量下跌=错误信号"}}},
+    ],
+    clearRules: [
+      {name:"负反馈螺旋(恐慌自强化)", pri:"最高", test(d){ return {pass:d.rsi<20&&d.vol_ratio>2&&d.macd.includes("空"), detail:`RSI=${d.rsi} 量比=${d.vol_ratio}`}}},
+    ],
+    holdDesc: "正反馈循环运行中，未见弱化信号 → 继续持有",
+    adviceFn(d){
+      const fg=MAC.fearGreed;
+      return `索罗斯反身性：恐贪指数${fg}${fg>70?"（贪婪，警惕正循环见顶）":fg<30?"（恐惧，关注逆向机会）":"（中性）"}。${d.northbound_flow==="流入"?"资金持续流入，正反馈可能形成中。":"资金未见明显流入。"}VIX=${MAC.vix}${MAC.vix>30?"极度恐慌=机会":""}。核心：发现错误第一反应是减仓。`;
+    }
+  },
+
+  lynch: {
+    icon:"📈", name:"林奇GARP", style:"成长价值",
+    pos:{g:[70,85],o:[50,65],r:[35,50],s:[20,35]},
+    buyRules: [
+      {name:"PEG≤1.0(核心)", pri:"核心", test(d){ return {pass:d.peg<=1.0, detail:`PEG=${d.peg}${d.peg<0.5?" 极佳":d.peg<=1?" 合理":" 偏高"}`}}},
+      {name:"EPS增速>15%", pri:"核心", test(d){ return {pass:d.eps_growth>=15, detail:`年增速=${d.eps_growth}%`}}},
+      {name:"ROE≥17%", pri:"建议", test(d){ return {pass:d.roe>=17, detail:`ROE=${d.roe}%`}}},
+      {name:"机构关注度低(加分)", pri:"辅助", test(d){ return {pass:d.analyst_coverage!=="高"||d.inst_pct<50, detail:`机构${d.inst_pct}% 覆盖${d.analyst_coverage}`}}},
+    ],
+    sellRules: [
+      {name:"增速放缓(<15%+PEG>1.5)", pri:"高", test(d){ return {pass:d.eps_growth<15&&d.peg>1.5, detail:`增速${d.eps_growth}% PEG=${d.peg}`}}},
+      {name:"PEG>2.0(太贵)", pri:"高", test(d){ return {pass:d.peg>2.0, detail:`PEG=${d.peg}`}}},
+      {name:"故事变质(逻辑不在)", pri:"高", test(d){ return {pass:d.eps_q_growth<0, detail:`季度增速=${d.eps_q_growth}%`}}},
+    ],
+    clearRules: [
+      {name:"盈利转亏+PEG极高", pri:"高", test(d){ return {pass:d.eps_q_growth<-10&&d.peg>3, detail:`季度${d.eps_q_growth}% PEG=${d.peg}`}}},
+    ],
+    holdDesc: "PEG在1.0-1.5且增速稳定 → 好公司长期持有",
+    adviceFn(d){
+      const cat = d.eps_growth>=25?"快速增长股":d.eps_growth>=10?"稳定增长股":d.eps_growth>=0?"缓慢增长股":"困境股";
+      return `林奇六分类：${d.n}属于「${cat}」。PEG=${d.peg}${d.peg<=0.5?"极佳!":d.peg<=1?"合理":d.peg<=1.5?"偏高":d.peg<=2?"贵":"太贵不碰"}。年EPS增速${d.eps_growth}%，季度${d.eps_q_growth}%。ROE=${d.roe}%。两分钟法则：你能说清为什么买吗？`;
+    }
+  },
+
+  can: {
+    icon:"🚀", name:"欧奈尔CANSLIM", style:"动量成长",
+    pos:{g:[80,95],o:[50,65],r:[10,25],s:[5,15]},
+    buyRules: [
+      {name:"C=当季EPS≥25%", pri:"核心", test(d){ return {pass:d.eps_q_growth>=25, detail:`当季EPS增速=${d.eps_q_growth}%`}}},
+      {name:"A=年度EPS≥25%+ROE≥17%", pri:"核心", test(d){ return {pass:d.annual_eps_growth_3y>=25&&d.roe>=17, detail:`3年年均=${d.annual_eps_growth_3y}% ROE=${d.roe}%`}}},
+      {name:"N=新高或放量突破", pri:"高", test(d){ return {pass:d.near_52w_high||d.vol_ratio>=1.4, detail:`${d.near_52w_high?"接近52周新高":"非新高"} 量比${d.vol_ratio}`}}},
+      {name:"M=大盘上升趋势", pri:"必要", test(){ return {pass:Q==="g"||Q==="o", detail:`当前${QN[Q]}${Q==="g"||Q==="o"?"✓":"✗ 3/4股票跟大盘"}`}}},
+      {name:"L=领导者(RS>70)", pri:"高", test(d){ return {pass:d.relative_strength>=70, detail:`相对强度=${d.relative_strength}`}}},
+    ],
+    sellRules: [
+      {name:"7-8%铁律止损", pri:"最高", test(d){ return {pass:false, detail:"需结合持仓成本（无条件执行）"}}},
+      {name:"RS跌破70", pri:"中", test(d){ return {pass:d.relative_strength<70, detail:`RS=${d.relative_strength}`}}},
+      {name:"大盘转弱(衰退/滞胀)", pri:"高", test(){ return {pass:Q==="r"||Q==="s", detail:`大盘=${QN[Q]}`}}},
+    ],
+    clearRules: [
+      {name:"亏损>10%无条件清仓", pri:"最高", test(d){ return {pass:false, detail:"需结合持仓成本"}}},
+    ],
+    holdDesc: "CANSLIM全部达标+大盘向上 → 持有领涨股",
+    adviceFn(d){
+      const c=d.eps_q_growth>=25, a=d.annual_eps_growth_3y>=25&&d.roe>=17, n=d.near_52w_high||d.vol_ratio>=1.4, m=Q==="g"||Q==="o", l=d.relative_strength>=70;
+      return `CANSLIM逐项：C(季度)${c?"✅":"❌"}${d.eps_q_growth}% A(年度)${a?"✅":"❌"}${d.annual_eps_growth_3y}% N(新高)${n?"✅":"❌"} S(量)${d.vol_ratio} L(RS)${l?"✅":"❌"}${d.relative_strength} M(大盘)${m?"✅":"❌"}${QN[Q]}。${!m?"⚠️ 熊市现金为王，CANSLIM不操作。":""}`;
+    }
+  }
+};
+
+// ============================================================
+// 辅助函数
+// ============================================================
+// 基本面评分（通用）
+function calcFund(d){
+  let s=5;
+  if(d.roe>=20)s+=1.5; else if(d.roe>=15)s+=1; else if(d.roe>=10)s+=0.5;
+  if(d.eps_growth>=25)s+=1.5; else if(d.eps_growth>=15)s+=1; else if(d.eps_growth>=5)s+=0.3;
+  if(d.peg<=0.5)s+=1; else if(d.peg<=1)s+=0.5; else if(d.peg>2.5)s-=1;
+  if(d.debt_ratio<0.3)s+=0.3; else if(d.debt_ratio>0.7)s-=0.5;
+  return Math.max(0,Math.min(10,s));
+}
+
+let cur="db";
+
+// ============================================================
+// 渲染
+// ============================================================
+function render(){
+  const m=MODELS[cur];
+  document.getElementById("time").textContent=new Date().toLocaleString("zh-CN")+" | "+m.icon+" "+m.name;
+
+  document.getElementById("tabs").innerHTML=Object.entries(MODELS).map(([k,v])=>
+    `<div class="tab${cur===k?' on':''}" onclick="cur='${k}';render();reSearch()">${v.icon} ${v.name}</div>`
+  ).join("");
+
+  const macItems=[
+    {l:"VIX",v:MAC.vix,s:"平静",c:MAC.vix>30?"dn":MAC.vix>20?"":"up"},
+    {l:"美10Y",v:MAC.us10y,s:"收益率",c:""},
+    {l:"美元",v:MAC.dxy,s:MAC.dxyChg+"%",c:"dn"},
+    {l:"S&P500",v:MAC.sp500,s:"+"+MAC.sp500Chg+"%",c:"up"},
+    {l:"恒生",v:MAC.hsi,s:MAC.hsiChg+"%",c:"dn"},
+    {l:"上证",v:MAC.sse,s:"+"+MAC.sseChg+"%",c:"up"},
+    {l:"恐贪",v:MAC.fearGreed,s:MAC.fearGreed>70?"极贪":MAC.fearGreed>55?"贪婪":MAC.fearGreed>45?"中性":MAC.fearGreed>25?"恐惧":"极恐",c:MAC.fearGreed>70?"dn":MAC.fearGreed<30?"up":""},
+    {l:"北向",v:MAC.northbound,s:"亿元",c:"up"}
+  ];
+  document.getElementById("macro").innerHTML=macItems.map(m=>
+    `<div class="mc"><div class="l">${m.l}</div><div class="v ${m.c}">${m.v}</div><div class="s ${m.c}">${m.s}</div></div>`
+  ).join("");
+
+  const qs=[["g","qg","金发女孩"],["o","qo","过热"],["r","qr","衰退"],["s","qs","滞胀"]];
+  document.getElementById("quad").innerHTML=qs.map(([k,c,n])=>
+    `<div class="qc ${c}${Q===k?' on':''}">${n}</div>`
+  ).join("");
+
+  // 每日建议
+  const pos=m.pos[Q], mid=Math.round((pos[0]+pos[1])/2);
+  document.getElementById("advNum").innerHTML=`
+    <div class="adv-num"><div class="l">建议仓位</div><div class="v" style="color:var(--cyan)">${mid}%</div></div>
+    <div class="adv-num"><div class="l">现金</div><div class="v" style="color:var(--org)">${100-mid}%</div></div>
+    <div class="adv-num"><div class="l">象限</div><div class="v" style="font-size:16px;color:var(--grn)">${QN[Q]}</div></div>`;
+
+  document.getElementById("advList").innerHTML=getAdvice(m).map(a=>
+    `<div class="adv"><span class="tag ${a.t}">${a.icon}</span><span>${a.text}</span></div>`
+  ).join("");
+
+  document.getElementById("hotTags").innerHTML=["AAPL","NVDA","TSLA","腾讯","阿里","茅台","宁德","平安"].map(s=>
+    `<span class="stag" onclick="document.getElementById('si').value='${s}';go()">${s}</span>`
+  ).join("");
+
+  document.getElementById("ft").textContent=`AI交易助手 v2.0 | ${m.icon} ${m.name} | 仅供参考，不构成投资建议`;
+}
+
+function getAdvice(m){
+  const a=[];
+  if(Q==="g"){
+    a.push({t:"b",icon:"📈",text:"宏观友好，积极配置权益资产"});
+  }else if(Q==="o"){
+    a.push({t:"w",icon:"⚡",text:"经济过热，关注通胀，降低高估值仓位"});
+  }else if(Q==="r"){
+    a.push({t:"h",icon:"🛡️",text:"衰退防守，增持国债和防御板块"});
+  }else{
+    a.push({t:"s",icon:"🚨",text:"滞胀环境，大幅降仓，现金黄金为主"});
+  }
+  // 策略特色
+  const tips={
+    db:`巴菲特选股：寻找ROE>15%、PEG<1.2的优质公司，${QN[Q]}象限配${m.pos[Q][0]}-${m.pos[Q][1]}%`,
+    turtle:`海龟系统：扫描20日通道突破标的，ATR控仓，${!["g","o"].includes(Q)?"趋势不明减少操作":"积极跟踪趋势"}`,
+    liver:`利弗莫尔：关注关键整数关口和前高，小仓试探确认后加码`,
+    soros:`反身性：恐贪=${MAC.fearGreed}${MAC.fearGreed>70?"警惕过热":MAC.fearGreed<30?"逆向机会来临":"循环正常"}，VIX=${MAC.vix}`,
+    lynch:`林奇GARP：筛选PEG<1且EPS增速>15%的成长股，远离PEG>2的`,
+    can:`CANSLIM：${Q==="g"?"牛市积极找领涨股(RS>70)":"大盘不利=现金为王，不操作"}`
+  };
+  a.push({t:"h",icon:m.icon,text:tips[cur]});
+  if(MAC.vix>25) a.push({t:"w",icon:"⚠️",text:`VIX=${MAC.vix}，波动加大，降低操作频率`});
+  return a;
+}
+
+// ============================================================
+// 搜索 & 诊断
+// ============================================================
+function go(){
+  const v=document.getElementById("si").value.trim();
+  if(!v)return;
+  const qs=v.split(/[\s,，]+/).filter(Boolean);
+  const found=[];
+  qs.forEach(q=>{
+    const k=A[q]||A[q.toLowerCase()]||A[q.toUpperCase()]||q.toUpperCase();
+    if(DB[k]){found.push(k);return}
+    const hit=Object.entries(DB).find(([,v])=>v.n.includes(q)||v.sym.toLowerCase().includes(q.toLowerCase()));
+    if(hit)found.push(hit[0]);
+  });
+  const el=document.getElementById("results");
+  if(!found.length){el.innerHTML=`<div class="empty">未找到「${v}」</div>`;return}
+  el.innerHTML=found.map(diagnose).join("");
+}
+
+function reSearch(){
+  const cards=document.querySelectorAll(".card[data-s]");
+  if(!cards.length)return;
+  document.getElementById("results").innerHTML=Array.from(cards).map(c=>diagnose(c.dataset.s)).join("");
+}
+
+function diagnose(sym){
+  const d=DB[sym]; if(!d)return"";
+  const m=MODELS[cur];
+
+  // 逐条评估买入规则
+  const buyResults = m.buyRules.map(r=>({...r, result:r.test(d)}));
+  const sellResults = m.sellRules.map(r=>({...r, result:r.test(d)}));
+  const clearResults = m.clearRules.map(r=>({...r, result:r.test(d)}));
+
+  const buyPass = buyResults.filter(r=>r.result.pass);
+  const buyReq = buyResults.filter(r=>r.pri==="核心"||r.pri==="必要");
+  const buyReqPass = buyReq.filter(r=>r.result.pass);
+  const sellTriggered = sellResults.filter(r=>r.result.pass);
+  const clearTriggered = clearResults.filter(r=>r.result.pass);
+
+  // 综合判断
+  let action, actionCls;
+  if(clearTriggered.length>0){
+    action="🔴 清仓"; actionCls="clear";
+  } else if(sellTriggered.length>=2 || sellTriggered.some(r=>r.pri==="最高"&&r.result.pass)){
+    action="📉 卖出/减仓"; actionCls="sell";
+  } else if(sellTriggered.length===1){
+    action="⚠️ 关注风险"; actionCls="hold";
+  } else if(buyReqPass.length===buyReq.length && buyPass.length>=buyResults.length*0.6){
+    action="✅ 可买入"; actionCls="buy";
+  } else if(buyReqPass.length===buyReq.length){
+    action="👀 接近买点"; actionCls="hold";
+  } else {
+    action="⏸️ 持有/观望"; actionCls="hold";
+  }
+
+  // 渲染规则检查
+  function renderRules(rules, type){
+    return rules.map(r=>{
+      const p=r.result.pass;
+      const icon = type==="buy" ? (p?'✅':'❌') : type==="sell"||type==="clear" ? (p?'🔴':'✅') : '';
+      const cls = type==="buy" ? (p?"pass":"fail") : (p?"fail":"pass");
+      return `<div class="rule">
+        <div class="icon ${cls}">${icon}</div>
+        <div class="name">${r.name}</div>
+        <div class="cond">${r.result.detail}</div>
+        <div class="result ${cls}">${type==="buy"?(p?"达标":"不达标"):(p?"触发":"未触发")}</div>
+      </div>`;
+    }).join("");
+  }
+
+  const adviceText = m.adviceFn(d, {buyResults,sellResults,clearResults});
+
+  return `<div class="card" data-s="${sym}">
+    <div class="card-top">
+      <div><span class="card-name">${d.n}</span><span class="card-sym">${d.sym} · ${d.mk}股 · ${d.sec}</span></div>
+      <span class="badge ${actionCls}">${action}</span>
+    </div>
+    <div class="nums">
+      <div><div class="l">现价</div><div class="v">${d.p}</div></div>
+      <div><div class="l">PE / PEG</div><div class="v">${d.pe} / ${d.peg}</div></div>
+      <div><div class="l">EPS增速(年/季)</div><div class="v">${d.eps_growth}% / ${d.eps_q_growth}%</div></div>
+      <div><div class="l">ROE / RS</div><div class="v">${d.roe}% / ${d.relative_strength}</div></div>
+    </div>
+    <div class="nums">
+      <div><div class="l">支撑</div><div class="v">${d.sup}</div></div>
+      <div><div class="l">阻力</div><div class="v">${d.res}</div></div>
+      <div><div class="l">止损</div><div class="v dn">${d.sl}</div></div>
+      <div><div class="l">MACD / RSI</div><div class="v">${d.macd} / ${d.rsi}</div></div>
+    </div>
+    <div class="sec-t" style="font-size:11px;margin-top:8px">📋 买入规则检查 (${buyPass.length}/${buyResults.length} 达标)</div>
+    <div class="rules">${renderRules(buyResults,"buy")}</div>
+    <div class="sec-t" style="font-size:11px;margin-top:8px">📋 卖出/风险检查 (${sellTriggered.length}/${sellResults.length} 触发)</div>
+    <div class="rules">${renderRules(sellResults,"sell")}</div>
+    ${clearTriggered.length?`<div class="sec-t" style="font-size:11px;margin-top:8px;color:var(--red)">🔴 清仓检查 (${clearTriggered.length} 触发)</div><div class="rules">${renderRules(clearResults,"clear")}</div>`:""}
+    ${d.signals.length?`<div style="font-size:10px;color:var(--cyan);margin-top:6px">${d.signals.map(s=>"· "+s).join("  ")}</div>`:""}
+    ${d.risks.length?`<div style="font-size:10px;color:var(--org);margin-top:3px">${d.risks.map(r=>"⚠️ "+r).join("  ")}</div>`:""}
+    <div class="verdict ${actionCls}-v">
+      <b>${m.icon} ${m.name}诊断</b><br>${adviceText}
+    </div>
+  </div>`;
+}
+
+render();
+</script>
+</body>
+</html>
